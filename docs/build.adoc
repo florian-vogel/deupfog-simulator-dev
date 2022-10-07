@@ -1,0 +1,9 @@
+build and run single file:
+1) build
+~/<pathToFile>$ kotlinc <filename>.kt -include-runtime -d <NameOfOutputfile>.jar
+2) run
+java -jar <name>.jar
+
+build and run via gradle (whole project):
+1) go to folder of gradlew
+2) ./gradlew run
