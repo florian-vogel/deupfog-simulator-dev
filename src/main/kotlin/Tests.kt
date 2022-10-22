@@ -12,7 +12,7 @@ fun createSimpleTest(): Pair<Network, List<InitPackageCallback>> {
 
     serverNode.addLink(UnidirectionalLinkPush(intermediateNode))
     intermediateNode.addLink(UnidirectionalLinkPush(receiverNode))
-    val simpleNetwork = Network(nodes)
+    val simpleNetwork = Network()
 
     val p1 = Package(serverNode, receiverNode, 1)
     val simpleUpdatePackageSendCallbacks = listOf(InitPackageCallback(10, InitPackageCallbackParams(p1, serverNode)))

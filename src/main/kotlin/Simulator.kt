@@ -3,20 +3,23 @@ import java.util.PriorityQueue
 
 data class SimulationModel(var network: Network, var packages: LinkedList<Package>, var time: Int)
 
-class Simulator(private val initialTimedCallbacks: List<InitPackageCallback>?) {
+class Simulator() {
     companion object {
-        // nur die callbacks sollten static sein, der rest wird dem callback beim Aufruf mitgegeben
-        val currentState: SimulationModel = SimulationModel(Network(LinkedList()), LinkedList<Package>(), 0)
-        val callbacks: PriorityQueue<PackageStateChangeCallback> = PriorityQueue { c1, c2 ->
+        private val currentState: SimulationModel = SimulationModel(Network(), LinkedList<Package>(), 0)
+        private val callbacks: PriorityQueue<PackageStateChangeCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
 
-        fun setNetwork(n: Network) {
-            currentState.network = n
+        fun addCallback(c: PackageStateChangeCallback) {
+            this.callbacks.add(c)
         }
 
-        fun setPackages(p: LinkedList<Package>) {
-            currentState.packages = p
+        fun addPackage(p: Package) {
+            currentState.packages.add(p)
+        }
+
+        fun getCurrentTimestamp(): Int {
+            return this.currentState.time
         }
 
         fun findNextHop(p: Package): Node? {
@@ -29,8 +32,9 @@ class Simulator(private val initialTimedCallbacks: List<InitPackageCallback>?) {
         }
     }
 
-    fun runSimulation() {
-        processInitialTimedCallbacks()
+    fun runSimulation(network: Network, initialTimedCallbacks: List<InitPackageCallback>?) {
+        setNetwork(network)
+        processInitialTimedCallbacks(initialTimedCallbacks)
 
         while (true) {
             if (callbacks.isEmpty()) {
@@ -42,7 +46,11 @@ class Simulator(private val initialTimedCallbacks: List<InitPackageCallback>?) {
         }
     }
 
-    private fun processInitialTimedCallbacks() {
+    private fun setNetwork(network: Network) {
+        currentState.network = network
+    }
+
+    private fun processInitialTimedCallbacks(initialTimedCallbacks: List<InitPackageCallback>?) {
         if (initialTimedCallbacks !== null) {
             initialTimedCallbacks.stream().forEach {
                 callbacks.add(it)

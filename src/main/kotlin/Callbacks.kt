@@ -11,39 +11,47 @@ open class PackageStateChangeCallbackParams(
     p: Package
 )
 
-class MovePackageCallback(
+class PackageArriveCallback(
     override val atInstant: Int,
-    override val callbackParams: MovePackageCallbackParams
+    override val callbackParams: PackageArriveCallbackParams
 ) : PackageStateChangeCallback {
 
     override fun runCallback() {
-        movePackage(callbackParams.p, callbackParams.from, callbackParams.to)
+        movePackage(
+            callbackParams.p,
+            callbackParams.p.getPosition(),
+            callbackParams.via.getDestination(),
+            callbackParams.via
+        )
     }
 
-    private fun movePackage(p: Package, from: Node, to: Node) {
-        from.remove(p)
+    // TODO: move to utilities
+    private fun movePackage(p: Package, from: Node, to: Node, via: UnidirectionalLinkPush) {
+        from.arrivedVia(via)
         p.setPosition(to)
         val nextHop = Simulator.findNextHop(p)
-        to.add(p, nextHop)
+        to.receive(p, nextHop)
     }
 }
 
-data class MovePackageCallbackParams(
-    val p: Package, val from: Node, val to: Node
+data class PackageArriveCallbackParams(
+    val p: Package, val via: UnidirectionalLinkPush
 ) : PackageStateChangeCallbackParams(p)
+
 class InitPackageCallback(
     override val atInstant: Int,
     override val callbackParams: InitPackageCallbackParams
 ) : PackageStateChangeCallback {
 
     override fun runCallback() {
-        initPackage(callbackParams.p, callbackParams.atElement)
+        addPackageAt(callbackParams.p, callbackParams.atElement)
     }
 
-    // auslagern in utility
-    private fun initPackage(p: Package, atElement: Node) {
+    // TODO: move to utilities
+    private fun addPackageAt(p: Package, atElement: Node) {
         val nextHop = Simulator.findNextHop(p)
-        atElement.add(p, nextHop)
+        p.setPosition(atElement)
+        atElement.receive(p, nextHop)
     }
 }
 
