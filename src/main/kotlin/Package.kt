@@ -1,11 +1,10 @@
-class Package(override val initialPosition: PackagePosition, val destination: PackagePosition, val size: Int) :
-    PositionablePackage {
-    private var currentPosition: PackagePosition = initialPosition
-    override fun setPosition(newPosition: PackagePosition) {
+class Package(val initialPosition: Node, val destination: Node, val size: Int) {
+    private var currentPosition: Node = initialPosition
+    fun setPosition(newPosition: Node) {
         currentPosition = newPosition
     }
 
-    override fun getPosition(): PackagePosition {
+    fun getPosition(): Node {
         return currentPosition
     }
 }

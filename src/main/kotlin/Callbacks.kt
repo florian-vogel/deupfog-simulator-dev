@@ -20,7 +20,7 @@ class MovePackageCallback(
         movePackage(callbackParams.p, callbackParams.from, callbackParams.to)
     }
 
-    private fun movePackage(p: Package, from: PackagePosition, to: PackagePosition) {
+    private fun movePackage(p: Package, from: Node, to: Node) {
         from.remove(p)
         p.setPosition(to)
         val nextHop = Simulator.findNextHop(p)
@@ -29,9 +29,8 @@ class MovePackageCallback(
 }
 
 data class MovePackageCallbackParams(
-    val p: Package, val from: PackagePosition, val to: PackagePosition
+    val p: Package, val from: Node, val to: Node
 ) : PackageStateChangeCallbackParams(p)
-
 class InitPackageCallback(
     override val atInstant: Int,
     override val callbackParams: InitPackageCallbackParams
@@ -42,14 +41,12 @@ class InitPackageCallback(
     }
 
     // auslagern in utility
-    private fun initPackage(p: Package, atElement: PackagePosition) {
+    private fun initPackage(p: Package, atElement: Node) {
         val nextHop = Simulator.findNextHop(p)
         atElement.add(p, nextHop)
     }
 }
 
 data class InitPackageCallbackParams(
-    val p: Package, val atElement: PackagePosition
+    val p: Package, val atElement: Node
 ) : PackageStateChangeCallbackParams(p)
-
-

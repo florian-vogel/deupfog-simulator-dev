@@ -1,39 +1,33 @@
 import java.util.*
 
 data class UnidirectionalLinkPush(
-    val linksTo: PackagePosition,
+    val linksTo: Node,
 ) {
     var occupiedWith: Package? = null
-    private var queue = LinkedList<Package>()
 
-    fun addToQueue(e: Package) {
-        queue.add(e)
-        processNextElementInQueue()
-    }
-
-    fun popQueue() {
-        queue.remove()
-        processNextElementInQueue()
-    }
-
-
-    fun processNextElementInQueue() {
-        if (occupiedWith === null) {
-            val nextPackage = queue.first()
-            occupiedWith = nextPackage
-            val transmissionTime = 10
-            println("create new callback in Link: $this")
-            Simulator.callbacks.add(
-                MovePackageCallback(
-                    Simulator.currentState.time + transmissionTime,
-                    MovePackageCallbackParams(nextPackage, nextPackage.getPosition(), linksTo)
-                )
-            )
+    // TODO: hier die responsibilities mit Node klären -> wer baut callback, wer bestimmt, wann transfer geklapt hat und wann incht ..
+    fun transferPackage(e: Package) {
+        if (this.isFree()) {
+            occupiedWith = e
+            createPackageMoveCallback(e)
         }
     }
 
+    fun completeTransfer() {
+        occupiedWith = null
+    }
 
-    fun numberOfElementsInQueue(): Int {
-        return queue.size
+    fun isFree(): Boolean {
+        return occupiedWith === null
+    }
+
+    private fun createPackageMoveCallback(p: Package) {
+        val transmissionTime = 10
+        Simulator.callbacks.add(
+            MovePackageCallback(
+                Simulator.currentState.time + transmissionTime,
+                MovePackageCallbackParams(p, p.getPosition(), linksTo)
+            )
+        )
     }
 }

@@ -3,15 +3,15 @@ import kotlin.collections.HashMap
 
 fun createSimpleTest(): Pair<Network, List<InitPackageCallback>> {
     val nodes = LinkedList<Node>()
-    val serverNode = Node(HashMap(), 1)
+    val serverNode = Node(LinkedList(), 1)
     nodes.add(serverNode)
-    val intermediateNode = Node(HashMap(), 1)
+    val intermediateNode = Node(LinkedList(), 1)
     nodes.add(intermediateNode)
-    val receiverNode = Node(HashMap(), 1)
+    val receiverNode = Node(LinkedList(), 1)
     nodes.add(receiverNode)
 
-    serverNode.linksTo[intermediateNode] = UnidirectionalLinkPush(intermediateNode)
-    intermediateNode.linksTo[receiverNode] = UnidirectionalLinkPush(receiverNode)
+    serverNode.addLink(UnidirectionalLinkPush(intermediateNode))
+    intermediateNode.addLink(UnidirectionalLinkPush(receiverNode))
     val simpleNetwork = Network(nodes)
 
     val p1 = Package(serverNode, receiverNode, 1)

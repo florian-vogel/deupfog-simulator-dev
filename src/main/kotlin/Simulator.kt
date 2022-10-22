@@ -19,7 +19,7 @@ class Simulator(private val initialTimedCallbacks: List<InitPackageCallback>?) {
             currentState.packages = p
         }
 
-        fun findNextHop(p: Package): PackagePosition? {
+        fun findNextHop(p: Package): Node? {
             val shortestPath = currentState.network.findShortestPath(p.getPosition(), p.getPosition())
             return if (shortestPath.isEmpty()) {
                 null
