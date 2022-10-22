@@ -23,8 +23,8 @@ class Simulator() {
         }
 
         fun findNextHop(p: Package): Node? {
-            val shortestPath = currentState.network.findShortestPath(p.getPosition(), p.getPosition())
-            return if (shortestPath.isEmpty()) {
+            val shortestPath = currentState.network.findShortestPath(p.getPosition(), p.getDestination())
+            return if (shortestPath === null || shortestPath.isEmpty()) {
                 null
             } else {
                 shortestPath.first

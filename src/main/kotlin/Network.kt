@@ -1,14 +1,38 @@
 import java.util.*
 
-class Network() {
-    fun findShortestPath(from: Node, to: Node): LinkedList<Node> {
-        // TODO: this is a dummy implementation, does not work if one element has more than one link
-        val shortestPath = LinkedList<Node>()
-        val linksAtNode = from.getLinks()
-        if (linksAtNode.isNotEmpty()) {
-            shortestPath.add(linksAtNode.first().getDestination())
-        }
+class Network {
+    fun findShortestPath(from: Node, to: Node): LinkedList<Node>? {
+        val shortestPath = findShortestPathRek(from, to)
+        shortestPath?.poll()
         return shortestPath
+    }
+
+    // TODO: not efficient
+    private fun findShortestPathRek(from: Node, to: Node): LinkedList<Node>? {
+        if (from === to) {
+            val list = LinkedList<Node>()
+            list.add(from)
+            return list
+        }
+        val linksAtFromNode = from.getLinks()
+        if (linksAtFromNode.isEmpty()) {
+            return null
+        } else {
+            var shortestPath: LinkedList<Node>? = null
+            linksAtFromNode.forEach {
+                val subPath = findShortestPathRek(it.getDestination(), to)
+                if (subPath !== null) {
+
+                    val path = LinkedList<Node>()
+                    path.add(from)
+                    path.addAll(subPath)
+                    if (path.last() === to && (shortestPath === null || path.size < shortestPath!!.size)) {
+                        shortestPath = path
+                    }
+                }
+            }
+            return shortestPath
+        }
     }
 }
 
@@ -17,7 +41,7 @@ class Node(private val links: LinkedList<UnidirectionalLinkPush>, private val ma
         links.associateWith { LinkedList<Package>() } as MutableMap<UnidirectionalLinkPush, Queue<Package>>
 
     fun receive(p: Package, nextHop: Node?) {
-        if (p.destination === this) {
+        if (p.getDestination() === this) {
             println("package arrived: $p")
             return
         } else if (nextHop === null) {
