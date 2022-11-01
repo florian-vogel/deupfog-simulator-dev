@@ -26,7 +26,7 @@ class PackageArriveCallback(
     }
 
     // TODO: move to utilities
-    private fun movePackage(p: Package, from: Node, to: Node, via: UnidirectionalLinkPush) {
+    private fun movePackage(p: Package, from: Node, to: Node, via: UnidirectionalLink) {
         from.arrivedVia(via)
         p.setPosition(to)
         val nextHop = Simulator.findNextHop(p)
@@ -35,7 +35,7 @@ class PackageArriveCallback(
 }
 
 data class PackageArriveCallbackParams(
-    val p: Package, val via: UnidirectionalLinkPush
+    val p: Package, val via: UnidirectionalLink
 ) : PackageStateChangeCallbackParams(p)
 
 class InitPackageCallback(

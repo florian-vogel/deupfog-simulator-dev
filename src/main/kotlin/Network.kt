@@ -7,7 +7,7 @@ class Network {
         return shortestPath
     }
 
-    // TODO: not efficient
+    // TODO: not efficient (not dijkstra) and no link-specific-consts (delay, bandwidth, queue-waiting-time)
     private fun findShortestPathRek(from: Node, to: Node): LinkedList<Node>? {
         if (from === to) {
             val list = LinkedList<Node>()
@@ -36,9 +36,9 @@ class Network {
     }
 }
 
-class Node(private val links: LinkedList<UnidirectionalLinkPush>, private val maxElements: Int) {
+class Node(private val links: LinkedList<UnidirectionalLink>, private val maxElements: Int) {
     private val queues =
-        links.associateWith { LinkedList<Package>() } as MutableMap<UnidirectionalLinkPush, Queue<Package>>
+        links.associateWith { LinkedList<Package>() } as MutableMap<UnidirectionalLink, Queue<Package>>
 
     fun receive(p: Package, nextHop: Node?) {
         if (p.getDestination() === this) {
@@ -54,52 +54,29 @@ class Node(private val links: LinkedList<UnidirectionalLinkPush>, private val ma
         }
     }
 
-    fun arrivedVia(link: UnidirectionalLinkPush) {
-        link.resetOccupyWith()
-        val queue = queues[link]
-        removeFromQueue(queue!!)
-        tryTransfer(link)
+    fun arrivedVia(link: UnidirectionalLink) {
+        link.removeFirst()
     }
 
-    fun addLink(link: UnidirectionalLinkPush) {
+    fun addLink(link: UnidirectionalLink) {
         this.links.add(link)
         this.queues[link] = LinkedList()
     }
 
-    fun getLinks(): List<UnidirectionalLinkPush> {
+    fun getLinks(): List<UnidirectionalLink> {
         return this.links
     }
 
     private fun removeFromQueue(queue: Queue<Package>) {
-        queue.remove()
+        queue.poll()
     }
 
     private fun passToQueue(p: Package, nextHop: Node) {
-        val linkToNextHop = getLinkTo(nextHop)!!
-        queues[linkToNextHop]?.add(p)
-        tryTransfer(linkToNextHop)
+        getLinkTo(nextHop)!!.lineUpPackage(p)
     }
 
-    private fun tryTransfer(link: UnidirectionalLinkPush) {
-        val linkQueue = queues[link]
-        val nextPackage = linkQueue?.firstOrNull()
-        if (link.isFree() && nextPackage !== null) {
-            transferPackage(link, nextPackage)
-        }
-    }
 
-    private fun transferPackage(link: UnidirectionalLinkPush, p: Package) {
-        link.occupyWith(p)
-        val transmissionTime = 10
-        Simulator.addCallback(
-            PackageArriveCallback(
-                Simulator.getCurrentTimestamp() + transmissionTime,
-                PackageArriveCallbackParams(p, link)
-            )
-        )
-    }
-
-    private fun getLinkTo(node: Node): UnidirectionalLinkPush? {
+    private fun getLinkTo(node: Node): UnidirectionalLink? {
         return links.find { it.getDestination() === node }
     }
 
