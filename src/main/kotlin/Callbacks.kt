@@ -40,11 +40,20 @@ data class PackageArriveCallbackParams(
 
 class InitPackageCallback(
     override val atInstant: Int,
-    override val callbackParams: InitPackageCallbackParams
+    override val callbackParams: InitPackageCallbackParams,
+    private val repeat: Int? = null,
 ) : PackageStateChangeCallback {
 
     override fun runCallback() {
         addPackageAt(callbackParams.p, callbackParams.atElement)
+        if (repeat !== null) {
+            Simulator.addCallback(
+                InitPackageCallback(
+                    atInstant + 10,
+                    InitPackageCallbackParams(callbackParams.p, callbackParams.atElement)
+                )
+            )
+        }
     }
 
     // TODO: move to utilities

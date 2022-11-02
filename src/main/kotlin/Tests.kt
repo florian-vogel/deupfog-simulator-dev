@@ -7,10 +7,22 @@ fun createSimpleTest(): Pair<Network, List<InitPackageCallback>> {
     val receiverNodePath1 = Node(LinkedList(), 2)
     val receiverNodePath2 = Node(LinkedList(), 2)
 
-    serverNode.addLink(UnidirectionalLinkPush(intermediateServerNodePath1, LinkedList()))
-    intermediateServerNodePath1.addLink(UnidirectionalLinkPush(receiverNodePath1, LinkedList()))
-    serverNode.addLink(UnidirectionalLinkPush(intermediateServerNodePath2, LinkedList()))
-    intermediateServerNodePath2.addLink(UnidirectionalLinkPush(receiverNodePath2, LinkedList()))
+    serverNode.addLink(UnidirectionalLinkPush(serverNode, intermediateServerNodePath1, LinkedList()))
+    intermediateServerNodePath1.addLink(
+        UnidirectionalLinkPush(
+            intermediateServerNodePath1,
+            receiverNodePath1,
+            LinkedList()
+        )
+    )
+    serverNode.addLink(UnidirectionalLinkPush(serverNode, intermediateServerNodePath2, LinkedList()))
+    intermediateServerNodePath2.addLink(
+        UnidirectionalLinkPush(
+            intermediateServerNodePath2,
+            receiverNodePath2,
+            LinkedList()
+        )
+    )
 
     val p1 = Package(serverNode, receiverNodePath1, 1)
     val p2 = Package(serverNode, receiverNodePath2, 1)

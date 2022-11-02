@@ -76,7 +76,7 @@ class Node(private val links: LinkedList<UnidirectionalLink>, private val maxEle
     }
 
 
-    private fun getLinkTo(node: Node): UnidirectionalLink? {
+    fun getLinkTo(node: Node): UnidirectionalLink? {
         return links.find { it.getDestination() === node }
     }
 

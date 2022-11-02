@@ -1,6 +1,6 @@
-class Package(initialPosition: Node, private val destination: Node, val size: Int) {
-    private var currentPosition: Node = initialPosition
-    fun setPosition(newPosition: Node) {
+open class Package(private val initialPosition: Node, private val destination: Node, val size: Int) {
+    open var currentPosition: Node = initialPosition
+    open fun setPosition(newPosition: Node) {
         currentPosition = newPosition
     }
 
@@ -11,5 +11,19 @@ class Package(initialPosition: Node, private val destination: Node, val size: In
     fun getDestination(): Node {
         return destination
     }
+
+    fun getInitialPosition(): Node {
+        return initialPosition;
+    }
 }
 
+class RequestPackage(initialPosition: Node, destination: Node, size: Int) :
+    Package(initialPosition, destination, size) {
+
+    override fun setPosition(newPosition: Node) {
+        if (newPosition === getDestination()) {
+            getDestination().getLinkTo(this.getInitialPosition())!!.tryTransfer()
+        }
+        currentPosition = newPosition
+    }
+}
