@@ -1,68 +1,84 @@
-data class TimedCallback(val instant: Int, val callback: (sim: Simulator) -> Unit)
-
-// assume for now that our network is static -> the only callback that can occur is a move package callback
-interface PackageStateChangeCallback {
+interface TimedCallback {
     val atInstant: Int
-    val callbackParams: PackageStateChangeCallbackParams
     fun runCallback() {}
 }
 
-open class PackageStateChangeCallbackParams(
-    p: Package
-)
+open class PackageStateChangeCallback(
+    override val atInstant: Int,
+    open val p: Package
+) : TimedCallback
 
 class PackageArriveCallback(
     override val atInstant: Int,
-    override val callbackParams: PackageArriveCallbackParams
-) : PackageStateChangeCallback {
+    override val p: Package,
+    private val via: UnidirectionalLink
+) : PackageStateChangeCallback(atInstant, p) {
 
     override fun runCallback() {
         movePackage(
-            callbackParams.p,
-            callbackParams.p.getPosition(),
-            callbackParams.via.getDestination(),
-            callbackParams.via
+            p,
+            p.getPosition(),
+            via.getDestination(),
+            via
         )
     }
-
-    // TODO: move to utilities
-    private fun movePackage(p: Package, from: Node, to: Node, via: UnidirectionalLink) {
-        from.arrivedVia(via)
-        p.setPosition(to)
-        val nextHop = Simulator.findNextHop(p)
-        to.receive(p, nextHop)
-    }
 }
 
-data class PackageArriveCallbackParams(
-    val p: Package, val via: UnidirectionalLink
-) : PackageStateChangeCallbackParams(p)
-
-class InitPackageCallback(
+open class PackageInitializationCallback(
     override val atInstant: Int,
-    override val callbackParams: InitPackageCallbackParams,
-) : PackageStateChangeCallback {
+    open val initialPosition: Node,
+    open val destination: Node,
+    open val size: Int
+) : TimedCallback
+
+data class InitPackageCallback(
+    override val atInstant: Int,
+    override val initialPosition: Node,
+    override val destination: Node,
+    override val size: Int,
+    val name: String
+) : PackageInitializationCallback(atInstant, initialPosition, destination, size) {
 
     override fun runCallback() {
-        addPackageAt(callbackParams.p)
-        if (callbackParams.repeat !== null) {
-            val requestPackage = RequestPackage(callbackParams.p.getPosition(), callbackParams.p.getDestination(), 1)
-            Simulator.addCallback(
-                InitPackageCallback(
-                    Simulator.getCurrentTimestamp() + callbackParams.repeat,
-                    InitPackageCallbackParams(requestPackage, callbackParams.repeat)
-                )
-            )
-        }
-    }
-
-    // TODO: move to utilities
-    private fun addPackageAt(p: Package) {
-        val nextHop = Simulator.findNextHop(p)
-        p.getInitialPosition().receive(p, nextHop)
+        val newPackage = Package(initialPosition, destination, size, name)
+        addPackageAtInitialPosition(newPackage)
     }
 }
 
-data class InitPackageCallbackParams(
-    val p: Package, val repeat: Int? = null
-) : PackageStateChangeCallbackParams(p)
+class PullRequestSchedulerCallback(
+    override val atInstant: Int,
+    override val initialPosition: Node,
+    override val destination: Node,
+    override val size: Int,
+    private val repeatInterval: Int?
+) :
+    PackageInitializationCallback(atInstant, initialPosition, destination, size) {
+    override fun runCallback() {
+        startPullRequestSchedule(initialPosition, destination, size, repeatInterval)
+    }
+}
+
+fun movePackage(p: Package, from: Node, to: Node, via: UnidirectionalLink) {
+    from.arrivedVia(via)
+    p.setPosition(to)
+    val nextHop = Simulator.findNextHop(p)
+    to.receive(p, nextHop)
+}
+
+fun addPackageAtInitialPosition(p: Package) {
+    val nextHop = Simulator.findNextHop(p)
+    p.getInitialPosition().receive(p, nextHop)
+}
+
+fun startPullRequestSchedule(initialPosition: Node, destination: Node, size: Int, repeatInterval: Int?) {
+    val newRequestPackage = RequestPackage(initialPosition, destination, size)
+    addPackageAtInitialPosition(newRequestPackage)
+    if (repeatInterval !== null) {
+        Simulator.addCallback(
+            PullRequestSchedulerCallback(
+                Simulator.getCurrentTimestamp() + repeatInterval,
+                initialPosition, destination, size, repeatInterval
+            )
+        )
+    }
+}

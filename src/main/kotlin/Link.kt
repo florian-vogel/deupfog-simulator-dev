@@ -48,7 +48,7 @@ class UnidirectionalLinkPush(at: Node, destination: Node, queue: LinkedList<Pack
         Simulator.addCallback(
             PackageArriveCallback(
                 Simulator.getCurrentTimestamp() + transmissionTime,
-                PackageArriveCallbackParams(p, this)
+                p, this
             )
         )
     }
@@ -75,12 +75,10 @@ class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Pack
     }
 
     private fun initRequestSchedule() {
-        // TODO: two times destination passed
-        val requestPackage = RequestPackage(this.getDestination(), this.at, 1)
         Simulator.addCallback(
-            InitPackageCallback(
+            PullRequestSchedulerCallback(
                 Simulator.getCurrentTimestamp(),
-                InitPackageCallbackParams(requestPackage, 10)
+                getDestination(), at, 1, 10
             )
         )
     }
@@ -98,7 +96,7 @@ class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Pack
         Simulator.addCallback(
             PackageArriveCallback(
                 Simulator.getCurrentTimestamp() + transmissionTime,
-                PackageArriveCallbackParams(p, this)
+                p, this
             )
         )
     }

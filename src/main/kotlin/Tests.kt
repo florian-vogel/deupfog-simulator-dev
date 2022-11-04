@@ -24,11 +24,9 @@ fun createSimpleTestPush(): Pair<Network, List<InitPackageCallback>> {
         )
     )
 
-    val p1 = Package(serverNode, receiverNodePath1, 1)
-    val p2 = Package(serverNode, receiverNodePath2, 1)
     val simpleUpdatePackageSendCallbacks = listOf(
-        InitPackageCallback(10, InitPackageCallbackParams(p1)),
-        InitPackageCallback(20, InitPackageCallbackParams(p2))
+        InitPackageCallback(10, serverNode, receiverNodePath1, 1, "Test Package 1"),
+        InitPackageCallback(20, serverNode, receiverNodePath2, 1, "Test Package 2")
     )
 
     return Pair(Network(), simpleUpdatePackageSendCallbacks)
@@ -75,11 +73,9 @@ fun createSimpleTestPull(): Pair<Network, List<InitPackageCallback>> {
         )
     )
 
-    val p1 = Package(serverNode, receiverNodePath1, 1, "Test Package 1")
-    val p2 = Package(serverNode, receiverNodePath2, 1, "Test Package 2")
     val simpleUpdatePackageSendCallbacks = listOf(
-        InitPackageCallback(10, InitPackageCallbackParams(p1)),
-        InitPackageCallback(20, InitPackageCallbackParams(p2))
+        InitPackageCallback(10, serverNode, receiverNodePath1, 1, "Test Package 1"),
+        InitPackageCallback(20, serverNode, receiverNodePath2, 1, "Test Package 2")
     )
 
     return Pair(Network(), simpleUpdatePackageSendCallbacks)

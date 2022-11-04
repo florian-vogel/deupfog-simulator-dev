@@ -2,7 +2,7 @@ open class Package(
     private val initialPosition: Node,
     private val destination: Node,
     val size: Int,
-    val ID: String = "unknown"
+    val name: String
 ) {
     open var currentPosition: Node = initialPosition
     open fun setPosition(newPosition: Node) {
@@ -23,7 +23,7 @@ open class Package(
 }
 
 class RequestPackage(initialPosition: Node, destination: Node, size: Int) :
-    Package(initialPosition, destination, size) {
+    Package(initialPosition, destination, size, name = "not specified") {
 
     override fun setPosition(newPosition: Node) {
         if (newPosition === getDestination()) {

@@ -44,10 +44,10 @@ class Node(private val links: LinkedList<UnidirectionalLink>, private val maxEle
 
     fun receive(p: Package, nextHop: Node?) {
         if (p.getDestination() === this) {
-            println("package arrived: $p, ID: ${p.ID}")
+            println("package arrived: $p, ID: ${p.name}")
             return
         } else if (nextHop === null) {
-            println("no connection to package destination for: $p, ID: ${p.ID}")
+            println("no connection to package destination for: $p, ID: ${p.name}")
         } else if (p.getPosition() !== this) {
             // TODO: show this dependence via code structure
             println("package can't be added to queue, since it is not positioned at this node")

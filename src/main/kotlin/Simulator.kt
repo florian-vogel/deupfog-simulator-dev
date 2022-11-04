@@ -6,11 +6,11 @@ data class SimulationModel(var network: Network, var packages: LinkedList<Packag
 class Simulator() {
     companion object {
         private val currentState: SimulationModel = SimulationModel(Network(), LinkedList<Package>(), 0)
-        private val callbacks: PriorityQueue<PackageStateChangeCallback> = PriorityQueue { c1, c2 ->
+        private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
 
-        fun addCallback(c: PackageStateChangeCallback) {
+        fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
         }
 
