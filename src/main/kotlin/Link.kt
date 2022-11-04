@@ -1,6 +1,8 @@
 import java.util.*
 
 // TODO: nochmal überlegen auf welche ebene die queue kommt
+// TODO: überlegung: unterscheide zwischen updatePackages und requestPackage
+// requestPackages werden immer gepushed, aber es könnte weiterhin eine strategie für update packages bestimmt werden
 open class UnidirectionalLink(
     val at: Node,
     private val destination: Node,
@@ -69,12 +71,18 @@ class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Pack
     UnidirectionalLink(at, destination, queue, null) {
 
     init {
-        val linkForRequests = destination.getLinkTo(at)!!
-        initRequestSchedule(linkForRequests)
+        initRequestSchedule()
     }
 
-    fun initRequestSchedule(atLink: UnidirectionalLink) {
-        atLink.lineUpPackage(RequestPackage(this.getDestination(), this.at, 1))
+    private fun initRequestSchedule() {
+        // TODO: two times destination passed
+        val requestPackage = RequestPackage(this.getDestination(), this.at, 1)
+        Simulator.addCallback(
+            InitPackageCallback(
+                Simulator.getCurrentTimestamp(),
+                InitPackageCallbackParams(requestPackage, 10)
+            )
+        )
     }
 
     override fun tryTransfer() {
@@ -99,6 +107,7 @@ class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Pack
         queue.add(p)
     }
 
+    // TODO: this doesn't seem right
     override fun removeFirst() {
         if (occupiedBy == queue.first()) {
             occupiedBy = null

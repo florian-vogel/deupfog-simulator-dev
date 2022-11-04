@@ -41,29 +41,28 @@ data class PackageArriveCallbackParams(
 class InitPackageCallback(
     override val atInstant: Int,
     override val callbackParams: InitPackageCallbackParams,
-    private val repeat: Int? = null,
 ) : PackageStateChangeCallback {
 
     override fun runCallback() {
-        addPackageAt(callbackParams.p, callbackParams.atElement)
-        if (repeat !== null) {
+        addPackageAt(callbackParams.p)
+        if (callbackParams.repeat !== null) {
+            val requestPackage = RequestPackage(callbackParams.p.getPosition(), callbackParams.p.getDestination(), 1)
             Simulator.addCallback(
                 InitPackageCallback(
-                    atInstant + 10,
-                    InitPackageCallbackParams(callbackParams.p, callbackParams.atElement)
+                    Simulator.getCurrentTimestamp() + callbackParams.repeat,
+                    InitPackageCallbackParams(requestPackage, callbackParams.repeat)
                 )
             )
         }
     }
 
     // TODO: move to utilities
-    private fun addPackageAt(p: Package, atElement: Node) {
+    private fun addPackageAt(p: Package) {
         val nextHop = Simulator.findNextHop(p)
-        p.setPosition(atElement)
-        atElement.receive(p, nextHop)
+        p.getInitialPosition().receive(p, nextHop)
     }
 }
 
 data class InitPackageCallbackParams(
-    val p: Package, val atElement: Node
+    val p: Package, val repeat: Int? = null
 ) : PackageStateChangeCallbackParams(p)

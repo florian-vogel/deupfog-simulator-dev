@@ -1,4 +1,9 @@
-open class Package(private val initialPosition: Node, private val destination: Node, val size: Int) {
+open class Package(
+    private val initialPosition: Node,
+    private val destination: Node,
+    val size: Int,
+    val ID: String = "unknown"
+) {
     open var currentPosition: Node = initialPosition
     open fun setPosition(newPosition: Node) {
         currentPosition = newPosition

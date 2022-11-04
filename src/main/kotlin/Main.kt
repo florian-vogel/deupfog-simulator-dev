@@ -1,5 +1,5 @@
 fun main(args: Array<String>) {
-    val simpleTestParams = createSimpleTest()
+    val simpleTestParams = createSimpleTestPull()
     val network = simpleTestParams.first
     val initialCallbacks = simpleTestParams.second
 

@@ -22,6 +22,10 @@ class Simulator() {
             return this.currentState.time
         }
 
+        fun setTimestamp(value: Int) {
+            this.currentState.time = value
+        }
+
         fun findNextHop(p: Package): Node? {
             val shortestPath = currentState.network.findShortestPath(p.getPosition(), p.getDestination())
             return if (shortestPath === null || shortestPath.isEmpty()) {
@@ -37,11 +41,12 @@ class Simulator() {
         processInitialTimedCallbacks(initialTimedCallbacks)
 
         while (true) {
-            if (callbacks.isEmpty()) {
+            if (callbacks.isEmpty() || getCurrentTimestamp() > 300) {
                 break
             }
-
             val currentCallback = callbacks.poll()
+
+            setTimestamp(currentCallback.atInstant)
             currentCallback.runCallback()
         }
     }
