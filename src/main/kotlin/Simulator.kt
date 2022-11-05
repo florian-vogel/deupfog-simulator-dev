@@ -9,6 +9,7 @@ class Simulator() {
         private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
+        val metrics = MetricsCollector()
 
         fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
@@ -36,7 +37,11 @@ class Simulator() {
         }
     }
 
-    fun runSimulation(network: Network, initialTimedCallbacks: List<InitPackageCallback>?) {
+    // TODO: specify order for callbacks at the same timestep (package arrive before requestPackage arrive)
+    fun runSimulation(
+        network: Network,
+        initialTimedCallbacks: List<InitPackageCallback>?
+    ) {
         setNetwork(network)
         processInitialTimedCallbacks(initialTimedCallbacks)
 

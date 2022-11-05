@@ -1,6 +1,23 @@
 import java.util.*
 
 fun createSimpleTestPush(): Pair<Network, List<InitPackageCallback>> {
+    val serverNode = Node(LinkedList(), 5)
+    val receiverNode = Node(LinkedList(), 5)
+
+    serverNode.addLink(UnidirectionalLinkPush(serverNode, receiverNode, LinkedList()))
+
+    val simpleUpdatePackageSendCallbacks = listOf(
+        InitPackageCallback(10, serverNode, receiverNode, 1, "Test Package 1"),
+        InitPackageCallback(30, serverNode, receiverNode, 1, "Test Package 2"),
+        InitPackageCallback(30, serverNode, receiverNode, 1, "Test Package 3"),
+        InitPackageCallback(30, serverNode, receiverNode, 1, "Test Package 4"),
+        InitPackageCallback(200, serverNode, receiverNode, 1, "Test Package 5")
+    )
+
+    return Pair(Network(), simpleUpdatePackageSendCallbacks)
+}
+
+fun createSimpleTestPush2(): Pair<Network, List<InitPackageCallback>> {
     val serverNode = Node(LinkedList(), 2)
     val intermediateServerNodePath1 = Node(LinkedList(), 2)
     val intermediateServerNodePath2 = Node(LinkedList(), 2)
@@ -39,7 +56,13 @@ fun createSimpleTestPull(): Pair<Network, List<InitPackageCallback>> {
     val receiverNodePath1 = Node(LinkedList(), 10)
     val receiverNodePath2 = Node(LinkedList(), 10)
 
-    serverNode.addLink(UnidirectionalLinkPull(serverNode, intermediateServerNodePath1, LinkedList()))
+    serverNode.addLink(
+        UnidirectionalLinkPull(
+            serverNode,
+            intermediateServerNodePath1,
+            LinkedList()
+        )
+    )
     intermediateServerNodePath1.addLink(
         UnidirectionalLinkPull(
             intermediateServerNodePath1,
@@ -47,7 +70,13 @@ fun createSimpleTestPull(): Pair<Network, List<InitPackageCallback>> {
             LinkedList()
         )
     )
-    intermediateServerNodePath1.addLink(UnidirectionalLinkPush(intermediateServerNodePath1, serverNode, LinkedList()))
+    intermediateServerNodePath1.addLink(
+        UnidirectionalLinkPush(
+            intermediateServerNodePath1,
+            serverNode,
+            LinkedList()
+        )
+    )
     receiverNodePath1.addLink(
         UnidirectionalLinkPush(
             receiverNodePath1,
@@ -56,7 +85,13 @@ fun createSimpleTestPull(): Pair<Network, List<InitPackageCallback>> {
         )
     )
 
-    serverNode.addLink(UnidirectionalLinkPull(serverNode, intermediateServerNodePath2, LinkedList()))
+    serverNode.addLink(
+        UnidirectionalLinkPull(
+            serverNode,
+            intermediateServerNodePath2,
+            LinkedList()
+        )
+    )
     intermediateServerNodePath2.addLink(
         UnidirectionalLinkPull(
             intermediateServerNodePath2,
@@ -64,7 +99,13 @@ fun createSimpleTestPull(): Pair<Network, List<InitPackageCallback>> {
             LinkedList()
         )
     )
-    intermediateServerNodePath2.addLink(UnidirectionalLinkPush(intermediateServerNodePath2, serverNode, LinkedList()))
+    intermediateServerNodePath2.addLink(
+        UnidirectionalLinkPush(
+            intermediateServerNodePath2,
+            serverNode,
+            LinkedList()
+        )
+    )
     receiverNodePath2.addLink(
         UnidirectionalLinkPush(
             receiverNodePath2,

@@ -7,8 +7,13 @@ open class UnidirectionalLink(
     val at: Node,
     private val destination: Node,
     val queue: LinkedList<Package>,
-    var occupiedBy: Package?
 ) {
+    private var transferringTop: Boolean = false
+
+    init {
+        Simulator.metrics.linkMetricsCollector.register(this)
+    }
+
     fun getDestination(): Node {
         return destination
     }
@@ -21,29 +26,36 @@ open class UnidirectionalLink(
         return queue.peek();
     }
 
+    fun setStateToTransferring() {
+        this.transferringTop = true
+        Simulator.metrics.linkMetricsCollector.getMetricsCollectorForLink(this)?.onStartTransfer()
+    }
+
+    fun isFree(): Boolean {
+        return !this.transferringTop
+    }
+
     open fun lineUpPackage(p: Package) {
         queue.add(p)
+        Simulator.metrics.packageMetricsCollector.getMetricsCollector(p)?.onAddedToQueue()
     }
 
     open fun removeFirst() {
         queue.remove()
+        transferringTop = false
+        Simulator.metrics.linkMetricsCollector.getMetricsCollectorForLink(this)?.onStopTransfer()
     }
 
-    open fun tryTransfer() {}
-}
-
-class UnidirectionalLinkPush(at: Node, destination: Node, queue: LinkedList<Package>) :
-    UnidirectionalLink(at, destination, queue, null) {
-
-    override fun tryTransfer() {
-        if (occupiedBy === null && isPackageWaiting()) {
+    fun tryTransfer() {
+        if (isFree() && isPackageWaiting()) {
             val nextPackage = getNextPackage()!!
+            Simulator.metrics.packageMetricsCollector.getMetricsCollector(nextPackage)?.onStartTransfer()
             transferPackage(nextPackage)
         }
     }
 
     private fun transferPackage(p: Package) {
-        occupiedBy = p
+        setStateToTransferring()
         val transmissionTime = 10
         Simulator.addCallback(
             PackageArriveCallback(
@@ -52,23 +64,32 @@ class UnidirectionalLinkPush(at: Node, destination: Node, queue: LinkedList<Pack
             )
         )
     }
+}
+
+class UnidirectionalLinkPush(
+    at: Node,
+    destination: Node,
+    queue: LinkedList<Package>
+) :
+    UnidirectionalLink(at, destination, queue) {
 
     override fun lineUpPackage(p: Package) {
-        queue.add(p)
+        super.lineUpPackage(p)
         tryTransfer()
     }
 
     override fun removeFirst() {
-        if (occupiedBy == queue.first()) {
-            occupiedBy = null
-        }
-        queue.poll()
+        super.removeFirst()
         tryTransfer()
     }
 }
 
-class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Package>) :
-    UnidirectionalLink(at, destination, queue, null) {
+class UnidirectionalLinkPull(
+    at: Node,
+    destination: Node,
+    queue: LinkedList<Package>
+) :
+    UnidirectionalLink(at, destination, queue) {
 
     init {
         initRequestSchedule()
@@ -81,35 +102,5 @@ class UnidirectionalLinkPull(at: Node, destination: Node, queue: LinkedList<Pack
                 getDestination(), at, 1, 10
             )
         )
-    }
-
-    override fun tryTransfer() {
-        if (occupiedBy === null && isPackageWaiting()) {
-            val nextPackage = getNextPackage()!!
-            transferPackage(nextPackage)
-        }
-    }
-
-    private fun transferPackage(p: Package) {
-        occupiedBy = p
-        val transmissionTime = 10
-        Simulator.addCallback(
-            PackageArriveCallback(
-                Simulator.getCurrentTimestamp() + transmissionTime,
-                p, this
-            )
-        )
-    }
-
-    override fun lineUpPackage(p: Package) {
-        queue.add(p)
-    }
-
-    // TODO: this doesn't seem right
-    override fun removeFirst() {
-        if (occupiedBy == queue.first()) {
-            occupiedBy = null
-        }
-        queue.poll()
     }
 }

@@ -5,8 +5,16 @@ open class Package(
     val name: String
 ) {
     open var currentPosition: Node = initialPosition
+
+    init {
+        Simulator.metrics.packageMetricsCollector.register(this)
+    }
+
     open fun setPosition(newPosition: Node) {
         currentPosition = newPosition
+        if (newPosition === getDestination()) {
+            Simulator.metrics.packageMetricsCollector.getMetricsCollector(this)?.onArrive()
+        }
     }
 
     fun getPosition(): Node {
@@ -22,13 +30,17 @@ open class Package(
     }
 }
 
-class RequestPackage(initialPosition: Node, destination: Node, size: Int) :
+class RequestPackage(
+    initialPosition: Node,
+    destination: Node,
+    size: Int
+) :
     Package(initialPosition, destination, size, name = "not specified") {
 
     override fun setPosition(newPosition: Node) {
+        super.setPosition(newPosition)
         if (newPosition === getDestination()) {
             getDestination().getLinkTo(this.getInitialPosition())!!.tryTransfer()
         }
-        currentPosition = newPosition
     }
 }

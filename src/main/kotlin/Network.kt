@@ -44,7 +44,6 @@ class Node(private val links: LinkedList<UnidirectionalLink>, private val maxEle
 
     fun receive(p: Package, nextHop: Node?) {
         if (p.getDestination() === this) {
-            println("package arrived: $p, ID: ${p.name}")
             return
         } else if (nextHop === null) {
             println("no connection to package destination for: $p, ID: ${p.name}")
