@@ -10,10 +10,6 @@ open class UnidirectionalLink(
 ) {
     private var transferringTop: Boolean = false
 
-    init {
-        Simulator.metrics.linkMetricsCollector.register(this)
-    }
-
     fun getDestination(): Node {
         return destination
     }
@@ -28,7 +24,6 @@ open class UnidirectionalLink(
 
     fun setStateToTransferring() {
         this.transferringTop = true
-        Simulator.metrics.linkMetricsCollector.getMetricsCollectorForLink(this)?.onStartTransfer()
     }
 
     fun isFree(): Boolean {
@@ -37,19 +32,16 @@ open class UnidirectionalLink(
 
     open fun lineUpPackage(p: Package) {
         queue.add(p)
-        Simulator.metrics.packageMetricsCollector.getMetricsCollector(p)?.onAddedToQueue()
     }
 
     open fun removeFirst() {
         queue.remove()
         transferringTop = false
-        Simulator.metrics.linkMetricsCollector.getMetricsCollectorForLink(this)?.onStopTransfer()
     }
 
     fun tryTransfer() {
         if (isFree() && isPackageWaiting()) {
             val nextPackage = getNextPackage()!!
-            Simulator.metrics.packageMetricsCollector.getMetricsCollector(nextPackage)?.onStartTransfer()
             transferPackage(nextPackage)
         }
     }
@@ -59,19 +51,15 @@ open class UnidirectionalLink(
         val transmissionTime = 10
         Simulator.addCallback(
             PackageArriveCallback(
-                Simulator.getCurrentTimestamp() + transmissionTime,
-                p, this
+                Simulator.getCurrentTimestamp() + transmissionTime, p, this
             )
         )
     }
 }
 
 class UnidirectionalLinkPush(
-    at: Node,
-    destination: Node,
-    queue: LinkedList<Package>
-) :
-    UnidirectionalLink(at, destination, queue) {
+    at: Node, destination: Node, queue: LinkedList<Package>
+) : UnidirectionalLink(at, destination, queue) {
 
     override fun lineUpPackage(p: Package) {
         super.lineUpPackage(p)
@@ -85,11 +73,8 @@ class UnidirectionalLinkPush(
 }
 
 class UnidirectionalLinkPull(
-    at: Node,
-    destination: Node,
-    queue: LinkedList<Package>
-) :
-    UnidirectionalLink(at, destination, queue) {
+    at: Node, destination: Node, queue: LinkedList<Package>
+) : UnidirectionalLink(at, destination, queue) {
 
     init {
         initRequestSchedule()
@@ -98,8 +83,7 @@ class UnidirectionalLinkPull(
     private fun initRequestSchedule() {
         Simulator.addCallback(
             PullRequestSchedulerCallback(
-                Simulator.getCurrentTimestamp(),
-                getDestination(), at, 1, 10
+                Simulator.getCurrentTimestamp(), getDestination(), PackagePayload(0), 10
             )
         )
     }

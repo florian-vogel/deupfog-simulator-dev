@@ -1,15 +1,22 @@
 import java.util.LinkedList
 import java.util.PriorityQueue
 
-data class SimulationModel(var network: Network, var packages: LinkedList<Package>, var time: Int)
+data class SimulationModel(var packages: LinkedList<Package>, var time: Int)
 
 class Simulator() {
     companion object {
-        private val currentState: SimulationModel = SimulationModel(Network(), LinkedList<Package>(), 0)
+        private val currentState: SimulationModel = SimulationModel(LinkedList<Package>(), 0)
         private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
-        val metrics = MetricsCollector()
+        val metrics = MetricsCollector("metrics1")
+
+        // TODO: only temporary
+        var serverNode: ServerNode? = null
+
+        fun setUpdateServerNode(node: ServerNode) {
+            serverNode = node
+        }
 
         fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
@@ -26,23 +33,12 @@ class Simulator() {
         fun setTimestamp(value: Int) {
             this.currentState.time = value
         }
-
-        fun findNextHop(p: Package): Node? {
-            val shortestPath = currentState.network.findShortestPath(p.getPosition(), p.getDestination())
-            return if (shortestPath === null || shortestPath.isEmpty()) {
-                null
-            } else {
-                shortestPath.first
-            }
-        }
     }
 
     // TODO: specify order for callbacks at the same timestep (package arrive before requestPackage arrive)
     fun runSimulation(
-        network: Network,
         initialTimedCallbacks: List<InitPackageCallback>?
     ) {
-        setNetwork(network)
         processInitialTimedCallbacks(initialTimedCallbacks)
 
         while (true) {
@@ -54,10 +50,6 @@ class Simulator() {
             setTimestamp(currentCallback.atInstant)
             currentCallback.runCallback()
         }
-    }
-
-    private fun setNetwork(network: Network) {
-        currentState.network = network
     }
 
     private fun processInitialTimedCallbacks(initialTimedCallbacks: List<InitPackageCallback>?) {

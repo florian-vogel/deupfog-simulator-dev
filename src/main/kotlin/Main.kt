@@ -1,10 +1,9 @@
 fun main(args: Array<String>) {
-    val simpleTestParams = createSimpleTestPull()
+    val simpleTestParams = createSimpleTestWithSpecificSoftwareVersions()
 
-    val network = simpleTestParams.first
-    val initialCallbacks = simpleTestParams.second
+    val initialCallbacks = simpleTestParams
 
     val simulator = Simulator()
-    simulator.runSimulation(network, initialCallbacks)
+    simulator.runSimulation(initialCallbacks)
     Simulator.metrics.printMetrics()
 }

@@ -1,28 +1,16 @@
+open class PackagePayload(open val size: Int)
+
 open class Package(
-    private val initialPosition: Node,
-    private val destination: Node,
-    val size: Int,
-    val name: String
+    private val initialPosition: Node, val payload: PackagePayload, val name: String
 ) {
     open var currentPosition: Node = initialPosition
 
-    init {
-        Simulator.metrics.packageMetricsCollector.register(this)
-    }
-
     open fun setPosition(newPosition: Node) {
         currentPosition = newPosition
-        if (newPosition === getDestination()) {
-            Simulator.metrics.packageMetricsCollector.getMetricsCollector(this)?.onArrive()
-        }
     }
 
     fun getPosition(): Node {
         return currentPosition
-    }
-
-    fun getDestination(): Node {
-        return destination
     }
 
     fun getInitialPosition(): Node {
@@ -31,16 +19,25 @@ open class Package(
 }
 
 class RequestPackage(
-    initialPosition: Node,
-    destination: Node,
-    size: Int
-) :
-    Package(initialPosition, destination, size, name = "not specified") {
+    initialPosition: Node, packagePayload: PackagePayload
+) : Package(initialPosition, packagePayload, name = "not specified") {
 
-    override fun setPosition(newPosition: Node) {
+    /* override fun setPosition(newPosition: Node) {
         super.setPosition(newPosition)
-        if (newPosition === getDestination()) {
-            getDestination().getLinkTo(this.getInitialPosition())!!.tryTransfer()
-        }
+        // TODO: hier nochmal überlegen, wie pull requests den pull mechanismus auslösen
+    } */
+}
+
+class UpdatePackage(
+    initialPosition: Node, private val update: SoftwareVersion, name: String
+) : Package(
+    initialPosition, update, name
+) {
+    init {
+        Simulator.metrics.updateMetricsCollector.registerUpdate(this.update)
+    }
+
+    fun getUpdate(): SoftwareVersion {
+        return update
     }
 }
