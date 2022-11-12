@@ -1,145 +1,231 @@
 import java.util.*
-import kotlin.collections.HashMap
 
-open class Node(private val links: LinkedList<UnidirectionalLink>, private val maxElements: Int) {
+open class Node(
+    private val links: List<UnidirectionalLink>, private val capacity: Int,
+) {
 
     open fun receive(p: Package) {
+        // TODO maybe make payload only accessible by destination node
+        if (!arrivedAtDestination(p, this)) {
+            forward(p)
+            return
+        }
     }
 
-    fun arrivedVia(link: UnidirectionalLink) {
-        link.removeFirst()
-    }
-
-    fun addLink(link: UnidirectionalLink) {
-        this.links.add(link)
+    fun forward(p: Package) {
+        // TODO handle no path found exeption consistent
+        val nextHop = findShortestPath(this, p.destination)
+        getLinkTo(nextHop!!.peek())!!.lineUpPackage(p)
     }
 
     fun getLinks(): List<UnidirectionalLink> {
         return this.links
     }
 
-    private fun removeFromQueue(queue: Queue<Package>) {
-        queue.poll()
-    }
-
-    private fun passToQueue(destination: Node, p: Package) {
-        getLinkTo(destination)!!.lineUpPackage(p)
-    }
-
-
     fun getLinkTo(node: Node): UnidirectionalLink? {
-        return links.find { it.getDestination() === node }
+        return links.find { it.to == node }
     }
 
-
-    private fun elementsAtNode(): Int {
-        return this.links.sumOf { it.queue.size }
+    fun getCapacityInUse(): Int {
+        return this.links.sumOf { it.elementsWaiting() }
     }
 }
 
-data class Software(val name: String)
+data class UpdateRetrievalParams(
+    // Push
+    val registerAtServerForUpdates: Boolean = false,
+    // Pull
+    val sendUpdateRequestsInterval: Int? = null
+)
 
-// TODO: unterscheiden zwischen software version und software update (updates erlauben erhöhung der version)
-data class SoftwareVersion(val target: Software, val versionNumber: Int, override val size: Int) : PackagePayload(size)
+abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
+    links: List<UnidirectionalLink>,
+    capacity: Int,
+    private val responsibleServer: List<Server<TUpdatable>>,
+    private val listeningFor: List<TUpdatable>,
+    private val updateRetrievalParams: UpdateRetrievalParams,
+) : Node(links, capacity) {
 
-class ServerNode(
-    links: LinkedList<UnidirectionalLink>, maxElements: Int, private val responsibleUpdateServer: ServerNode? = null
-) : Node(links, maxElements) {
-    class SoftwareUpdateRegistry() {
-        private val registry = mutableMapOf<Software, SoftwareVersion>()
-
-        fun updateIfMoreRecent(software: Software, update: SoftwareVersion) {
-            val currentUpdate = registry[software]
-            if (currentUpdate == null || update.versionNumber > currentUpdate.versionNumber) registry[software] = update
-        }
-
-        fun getCurrentVersion(software: Software): SoftwareVersion? {
-            return registry[software]
-        }
-    }
-
-    private val updateRegistry = SoftwareUpdateRegistry()
-    private val edgeRegistry = mutableMapOf<Software, LinkedList<EdgeNode>>()
-    private val serverRegistry: LinkedList<ServerNode> = LinkedList()
+    private val updateRegistry = mutableMapOf<TUpdatable, MutableList<UpdatableUpdate<TUpdatable>>>()
+    private var pullRequestSchedule: TimedCallback? = null
 
     init {
-        registerAtServer()
-    }
-
-    private fun registerAtServer() {
-        responsibleUpdateServer?.registerNodeInRegistry(this)
+        onConnected()
     }
 
     override fun receive(p: Package) {
         super.receive(p)
-        if (p is UpdatePackage) {
-            updateRegistry.updateIfMoreRecent(p.getUpdate().target, p.getUpdate())
-            notifyLinksAboutNewUpdate(p.getUpdate())
-        }
-        if (p is RequestPackage) {
-            getLinks().filter { it.getDestination() == p.getInitialPosition() }.forEach { it.tryTransfer() }
+        if (p is UpdateResponse<*>) {
+            processUpdate(p as UpdateResponse<TUpdatable>)
         }
     }
 
-    fun registerNodeInRegistry(node: Node) {
-        if (node is EdgeNode) {
-            val software = node.runningSoftware.map { it.key }
-            software.forEach {
-                val targets = edgeRegistry[it]
-                if (targets !== null) {
-                    targets.add(node)
-                } else {
-                    edgeRegistry[it] = LinkedList<EdgeNode>()
-                    edgeRegistry[it]?.add(node)
-                }
-            }
-        } else if (node is ServerNode) {
-            serverRegistry.add(node)
+    open fun processUpdate(request: UpdateResponse<TUpdatable>) {
+        updateUpdateRegistry(request.update)
+    }
+
+    fun onConnected() {
+        if (updateRetrievalParams.registerAtServerForUpdates) {
+            registerAtServer()
+            sendPullRequest()
+
+        }
+        if (updateRetrievalParams.sendUpdateRequestsInterval !== null) {
+            initPullRequestSchedule()
         }
     }
 
-    private fun notifyLinksAboutNewUpdate(update: SoftwareVersion) {
-        // TODO: eventuell nochmal umschreiben, schlecht lesbar und komische struktur
-        getLinks().forEach {
-            if (it.getDestination() is ServerNode || this.edgeRegistry[update.target]?.contains(it.getDestination()) == true) {
-                val newUpdatePackage = UpdatePackage(this, update, "")
-                it.lineUpPackage(newUpdatePackage)
+    fun onDisconnected() {
+        removePullRequestSchedule()
+    }
+
+    fun getInUpdateRegistry(updatableType: UpdatableType): List<UpdatableUpdate<TUpdatable>>? {
+        return updateRegistry[updatableType]
+    }
+
+    private fun updateUpdateRegistry(update: UpdatableUpdate<TUpdatable>) {
+        if (updateRegistry[update.type] == null) {
+            updateRegistry[update.type] = mutableListOf(update)
+        } else {
+            updateRegistry[update.type]!!.add(update)
+        }
+    }
+
+    private fun registerAtServer() {
+        responsibleServer.forEach {
+            val request = RegisterForUpdatesRequest(1, this, it, getCurrentUpdatableStates())
+            val nextHop = findShortestPath(this, it)?.peek()
+            if (nextHop != null) {
+                getLinkTo(nextHop)?.lineUpPackage(request)
             }
+        }
+    }
+
+    private fun sendPullRequest() {
+        responsibleServer.forEach {
+            val request = PullLatestUpdatesRequest(1, this, it, getCurrentUpdatableStates())
+            val nextHop = findShortestPath(this, it)?.peek()
+            if (nextHop != null) {
+                getLinkTo(nextHop)?.lineUpPackage(request)
+            }
+        }
+    }
+
+    private fun getCurrentUpdatableStates(): List<UpdatableState<TUpdatable>> {
+        val states = mutableListOf<UpdatableState<TUpdatable>>()
+        updateRegistry.forEach {
+            val state = UpdatableState(it.key)
+            it.value.sortBy { update -> update.updatesToVersion }
+            it.value.forEach { update -> state.applyUpdate(update) }
+            states.add(state)
+        }
+        return states
+    }
+
+    private fun initPullRequestSchedule() {
+        // TODO
+    }
+
+    private fun removePullRequestSchedule() {
+        pullRequestSchedule = null
+    }
+
+}
+
+open class Server<TUpdatable : UpdatableType>(
+    links: List<UnidirectionalLink>,
+    capacity: Int,
+    responsibleServer: List<Server<TUpdatable>>,
+    listeningFor: List<TUpdatable>,
+    updateRetrievalParams: UpdateRetrievalParams
+) : UpdateReceiverNode<TUpdatable>(links, capacity, responsibleServer, listeningFor, updateRetrievalParams) {
+    private val receiverRegistry =
+        mutableMapOf<UpdateReceiverNode<TUpdatable>, MutableList<UpdatableState<TUpdatable>>>()
+
+    override fun receive(p: Package) {
+        super.receive(p)
+        // TODO: work with reified and inline functions
+        if (p is UpdateRequest<*>) {
+            processRequest(p as UpdateRequest<TUpdatable>)
+        }
+    }
+
+    override fun processUpdate(request: UpdateResponse<TUpdatable>) {
+        super.processUpdate(request)
+        initUpdatePackages()
+    }
+
+    private fun processRequest(request: UpdateRequest<TUpdatable>) {
+        if (request is PullLatestUpdatesRequest<TUpdatable>) {
+            initUpdatePackageAndPassToLink(request.initialPosition, request.requesterUpdatables)
+        } else if (request is RegisterForUpdatesRequest<TUpdatable>) {
+            registerNodeInLocalRegistry(request.initialPosition, request.requesterUpdatables)
+            initUpdatePackageAndPassToLink(request.initialPosition, request.requesterUpdatables)
+        }
+    }
+
+    private fun initUpdatePackages() {
+        receiverRegistry.forEach {
+            initUpdatePackageAndPassToLink(it.key, it.value)
+        }
+    }
+
+    // TODO: make listeningFor non nullable
+    private fun initUpdatePackageAndPassToLink(
+        target: UpdateReceiverNode<TUpdatable>, states: List<UpdatableState<TUpdatable>>
+    ) {
+        states.map {
+            getInUpdateRegistry(it.type)?.filter { update ->
+                it.type.updateCompatible(
+                    it.versionNumber, update.updatesToVersion
+                )
+            }?.maxBy { compatibleUpdate -> compatibleUpdate.updatesToVersion }
+        }?.forEach {
+            this.getLinkTo(target)?.lineUpPackage(
+                UpdateResponse(this, target, it!!.size, it)
+            )
+        }
+    }
+
+    private fun registerNodeInLocalRegistry(
+        node: UpdateReceiverNode<TUpdatable>, software: List<UpdatableState<TUpdatable>>?
+    ) {
+        if (software != null) {
+            receiverRegistry[node] = software.toMutableList()
+        } else {
+            receiverRegistry[node] = mutableListOf()
         }
     }
 }
 
-class EdgeNode(
+interface UnreliableElement {
+    var online: Boolean
+
+    fun goOnline()
+    fun goOffline()
+}
+
+class Edge<TUpdatable : UpdatableType>(
     links: LinkedList<UnidirectionalLink>,
     maxElements: Int,
-    val runningSoftware: HashMap<Software, SoftwareVersion>,
-    private val responsibleUpdateServer: ServerNode,
-) : Node(links, maxElements) {
+    responsibleUpdateServer: List<Server<TUpdatable>>,
+    listeningFor: List<TUpdatable>,
+    updateRetrievalParams: UpdateRetrievalParams,
+    override var online: Boolean = true,
+) : UpdateReceiverNode<TUpdatable>(links, maxElements, responsibleUpdateServer, listeningFor, updateRetrievalParams),
+    UnreliableElement {
 
-    init {
-        registerAtServer()
-        Simulator.metrics.updateMetricsCollector.registerEdge(this)
-    }
-
-    private fun registerAtServer() {
-        responsibleUpdateServer.registerNodeInRegistry(this)
-    }
-
-    override fun receive(p: Package) {
-        if (p is UpdatePackage) {
-            applyUpdate(p)
-            Simulator.metrics.updateMetricsCollector.onUpdateArrive(this, p.getUpdate())
+    override fun goOnline() {
+        if (online) {
+            return
+        } else {
+            online = true
+            onConnected()
         }
-        super.receive(p)
-        // TODO: notify metricscollector
     }
 
-    // TODO: oder als eigenen callback? hier wird software installation time vernachlässsigt
-    private fun applyUpdate(p: UpdatePackage) {
-        val currentVersion = this.runningSoftware[p.getUpdate().target]?.versionNumber
-        if (currentVersion === null || currentVersion < p.getUpdate().versionNumber) {
-            runningSoftware[p.getUpdate().target] = p.getUpdate()
-            println("received new update: ${p.getUpdate().versionNumber}, for software: ${p.getUpdate().target.name}")
-        }
+    override fun goOffline() {
+        online = false
+        onDisconnected()
     }
 }

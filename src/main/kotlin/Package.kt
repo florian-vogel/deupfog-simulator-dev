@@ -1,43 +1,30 @@
-open class PackagePayload(open val size: Int)
-
-open class Package(
-    private val initialPosition: Node, val payload: PackagePayload, val name: String
-) {
-    open var currentPosition: Node = initialPosition
-
-    open fun setPosition(newPosition: Node) {
-        currentPosition = newPosition
-    }
-
-    fun getPosition(): Node {
-        return currentPosition
-    }
-
-    fun getInitialPosition(): Node {
-        return initialPosition;
-    }
+interface Package {
+    val initialPosition: Node
+    val destination: Node
+    val size: Int
 }
 
-class RequestPackage(
-    initialPosition: Node, packagePayload: PackagePayload
-) : Package(initialPosition, packagePayload, name = "not specified") {
-
-    /* override fun setPosition(newPosition: Node) {
-        super.setPosition(newPosition)
-        // TODO: hier nochmal überlegen, wie pull requests den pull mechanismus auslösen
-    } */
+interface UpdateRequest<TUpdatable : UpdatableType> : Package {
+    val requesterUpdatables: List<UpdatableState<TUpdatable>>
 }
 
-class UpdatePackage(
-    initialPosition: Node, private val update: SoftwareVersion, name: String
-) : Package(
-    initialPosition, update, name
-) {
-    init {
-        Simulator.metrics.updateMetricsCollector.registerUpdate(this.update)
-    }
+data class PullLatestUpdatesRequest<TUpdatable : UpdatableType>(
+    override val size: Int,
+    override val initialPosition: UpdateReceiverNode<TUpdatable>,
+    override val destination: Server<TUpdatable>,
+    override val requesterUpdatables: List<UpdatableState<TUpdatable>>,
+) : UpdateRequest<TUpdatable>
 
-    fun getUpdate(): SoftwareVersion {
-        return update
-    }
-}
+data class RegisterForUpdatesRequest<TUpdatable : UpdatableType>(
+    override val size: Int,
+    override val initialPosition: UpdateReceiverNode<TUpdatable>,
+    override val destination: Server<TUpdatable>,
+    override val requesterUpdatables: List<UpdatableState<TUpdatable>>,
+) : UpdateRequest<TUpdatable>
+
+data class UpdateResponse<TUpdatable : UpdatableType>(
+    override val initialPosition: Node,
+    override val destination: Node,
+    override val size: Int,
+    val update: UpdatableUpdate<TUpdatable>
+) : Package

@@ -109,8 +109,8 @@ fun createSimpleTestWithSpecificSoftwareVersions(): List<InitPackageCallback> {
     val newVersion = SoftwareVersion(software1, 1, 1)
     val initialVersion = SoftwareVersion(software1, 0, 1)
 
-    val serverNode = ServerNode(LinkedList(), 5)
-    val serverNode2 = ServerNode(LinkedList(), 5)
+    val serverNode = Server(LinkedList(), 5)
+    val serverNode2 = Server(LinkedList(), 5)
     val receiverNode = EdgeNode(
         LinkedList(), 5, hashMapOf(software1 to initialVersion) as HashMap<Software, SoftwareVersion>, serverNode
     )
