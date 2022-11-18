@@ -1,7 +1,7 @@
 import java.util.*
 
 open class Node(
-    private val links: List<UnidirectionalLink>, private val capacity: Int,
+    private val links: MutableList<UnidirectionalLink>, private val capacity: Int,
 ) {
 
     open fun receive(p: Package) {
@@ -26,6 +26,10 @@ open class Node(
         return links.find { it.to == node }
     }
 
+    fun addLink(link: UnidirectionalLink) {
+        links.add(link)
+    }
+
     fun getCapacityInUse(): Int {
         return this.links.sumOf { it.elementsWaiting() }
     }
@@ -39,7 +43,7 @@ data class UpdateRetrievalParams(
 )
 
 abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
-    links: List<UnidirectionalLink>,
+    links: MutableList<UnidirectionalLink>,
     capacity: Int,
     private val responsibleServer: List<Server<TUpdatable>>,
     private val listeningFor: List<TUpdatable>,
@@ -133,7 +137,7 @@ abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
 }
 
 open class Server<TUpdatable : UpdatableType>(
-    links: List<UnidirectionalLink>,
+    links: MutableList<UnidirectionalLink>,
     capacity: Int,
     responsibleServer: List<Server<TUpdatable>>,
     listeningFor: List<TUpdatable>,
@@ -206,7 +210,7 @@ interface UnreliableElement {
 }
 
 class Edge<TUpdatable : UpdatableType>(
-    links: LinkedList<UnidirectionalLink>,
+    links: MutableList<UnidirectionalLink>,
     maxElements: Int,
     responsibleUpdateServer: List<Server<TUpdatable>>,
     listeningFor: List<TUpdatable>,
@@ -214,6 +218,11 @@ class Edge<TUpdatable : UpdatableType>(
     override var online: Boolean = true,
 ) : UpdateReceiverNode<TUpdatable>(links, maxElements, responsibleUpdateServer, listeningFor, updateRetrievalParams),
     UnreliableElement {
+
+    override fun processUpdate(request: UpdateResponse<TUpdatable>) {
+        super.processUpdate(request)
+        Simulator.getUpdateMetrics()?.onArriveAtEdge(request.update as UpdatableUpdate<Software>, this as Edge<Software>)
+    }
 
     override fun goOnline() {
         if (online) {

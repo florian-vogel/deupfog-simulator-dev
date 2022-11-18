@@ -18,10 +18,10 @@ class CompleteTransmissionCallback(
 }
 
 open class InitPackageAtNodeCallback(
-    override val atInstant: Int, private val node: Node, private val p: Package
+    override val atInstant: Int, private val p: Package
 ) : TimedCallback {
     override fun runCallback() {
-        node.receive(p)
+        p.initialPosition.receive(p)
     }
 
     override fun cancelCallback() {}

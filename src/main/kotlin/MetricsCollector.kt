@@ -2,124 +2,54 @@ import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.LinkedHashMap
 
-class MetricsCollector(val name: String) {
+class MetricsCollector<TUpdatable : UpdatableType>(
+    val name: String, edges: List<Edge<TUpdatable>>, servers: List<Server<TUpdatable>>
+) {
     // val linkMetricsCollector = LinkMetricsCollector()
-    val updateMetricsCollector = UpdateMetricsCollector()
+    val updateMetricsCollector = UpdateMetricsCollector(edges, servers)
     // private val edgeRegistry = mutableMapOf<Software, LinkedList<EdgeNode>>()
     // private val serverRegistry: LinkedList<ServerNode> = LinkedList()
 
     fun printMetrics() {
         // this.linkMetricsCollector.printMetrics()
-        this.updateMetricsCollector.printMetrics()
-    }
-}
-
-class LinkMetricsCollector() {
-    class MetricsPerLink() {
-        var timeOccupied: Int = 0
-        var packagesWaitingOnAvarage: Float = 0f
-        var packagesLost: Int = 0
-        // TODO: implement behaviour for above vars
-
-        private var isTransferring: Boolean = false
-        private var timestampAtLastIsTransferringChange = Simulator.getCurrentTimestamp()
-
-        fun onStartTransfer() {
-            if (!isTransferring) {
-                isTransferring = true
-                timestampAtLastIsTransferringChange = Simulator.getCurrentTimestamp()
-            }
-        }
-
-        fun onStopTransfer() {
-            if (isTransferring) {
-                isTransferring = false
-                timeOccupied += Simulator.getCurrentTimestamp() - timestampAtLastIsTransferringChange
-                timestampAtLastIsTransferringChange = Simulator.getCurrentTimestamp()
-            }
-        }
-    }
-
-    private val metrics: MutableMap<UnidirectionalLink, MetricsPerLink> = LinkedHashMap()
-
-    fun register(link: UnidirectionalLink) {
-        metrics[link] = MetricsPerLink()
-    }
-
-    fun getMetricsCollectorForLink(link: UnidirectionalLink): MetricsPerLink? {
-        return metrics[link]
-    }
-
-    fun printMetrics() {
-        this.metrics.forEach {
-            println("link: ${it.key}, timeOccupied: ${it.value.timeOccupied}")
-        }
+        this.updateMetricsCollector.print()
     }
 }
 
 class UpdateMetricsCollector(
-    val printTimePerNode: Boolean = false
+    private val edges: List<Edge<out UpdatableType>>, private val servers: List<Server<out UpdatableType>>
 ) {
-    class MetricsPerUpdate(private val edgesWaiting: LinkedList<EdgeNode>) {
-        var createTimestamp = Simulator.getCurrentTimestamp()
-        var timeTillUpdateReachedEveryEdge: Int? = null
-        var arriveTimestampPerEdge: HashMap<EdgeNode, Int?> = HashMap()
+    data class UpdateMetricsOutput(
+        val initializedAt: Int = Simulator.getCurrentTimestamp(),
+        val arrivedAtServerTimeline: MutableMap<Int, Server<out UpdatableType>> = mutableMapOf(),
+        var arrivedAtAllServersAt: Int? = null,
+        val arrivedAtEdgeTimeline: PriorityQueue<Pair<Int, Edge<out UpdatableType>>> = PriorityQueue { c1, c2 ->
+            c1.first.compareTo(c2.first)
+        },
+        var arrivedAtAllEdgesAt: Int? = null,
+    )
 
-        fun onUpdateArriveAtEdge(edgeNode: EdgeNode) {
-            edgesWaiting.remove(edgeNode)
-            arriveTimestampPerEdge[edgeNode] = Simulator.getCurrentTimestamp() - createTimestamp
-            if (edgesWaiting.isEmpty()) {
-                timeTillUpdateReachedEveryEdge = Simulator.getCurrentTimestamp() - createTimestamp
-            }
-        }
+    val updates = mutableMapOf<UpdatableUpdate<out UpdatableType>, UpdateMetricsOutput>();
 
-        fun newNode(edge: EdgeNode) {
-            this.edgesWaiting.add(edge)
+
+    fun registerUpdate(update: UpdatableUpdate<out UpdatableType>) {
+        updates[update] = UpdateMetricsOutput()
+    }
+
+    fun onArriveAtEdge(update: UpdatableUpdate<out UpdatableType>, edge: Edge<out UpdatableType>) {
+        updates[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
+        if (updateArrivedAtAllEdges(update)) {
+            updates[update]?.arrivedAtAllEdgesAt = Simulator.getCurrentTimestamp()
         }
     }
 
-    private val metrics: MutableMap<SoftwareVersion, MetricsPerUpdate> = LinkedHashMap()
-    private val edgeRegistry: MutableMap<Software, LinkedList<EdgeNode>> = hashMapOf()
-
-    fun registerUpdate(update: SoftwareVersion) {
-        if (metrics[update] == null) {
-            val edgesWaiting = this.edgeRegistry[update.target]
-            metrics[update] = MetricsPerUpdate(edgesWaiting!!)
-        }
+    private fun updateArrivedAtAllEdges(update: UpdatableUpdate<out UpdatableType>): Boolean {
+        return edges.all { updates[update]?.arrivedAtEdgeTimeline?.map { pair -> pair.second }?.contains(it) == true }
     }
 
-    // TODO: duplication with serverNode
-    // keep registry as own type
-    fun registerEdge(edge: EdgeNode) {
-        val software = edge.runningSoftware.map { it.key }
-        software.forEach { software ->
-            val targets = edgeRegistry[software]
-            if (targets !== null) {
-                targets.add(edge)
-            } else {
-                edgeRegistry[software] = LinkedList<EdgeNode>()
-                edgeRegistry[software]?.add(edge)
-            }
-            val filteredMetrics = metrics.filter { (key, value) -> key.target === software }
-            filteredMetrics.entries.forEach { it.value.newNode(edge) }
-        }
-    }
-
-    fun onUpdateArrive(node: Node, update: SoftwareVersion) {
-        if (node is EdgeNode) {
-            metrics[update]?.onUpdateArriveAtEdge(node)
-        }
-    }
-
-    fun printMetrics() {
-        this.metrics.forEach {
-            var timePerNode = ""
-            if (printTimePerNode) {
-                timePerNode += "timePerNode: TODO"
-            }
-            println(
-                "update: ${it.key}, " + "timetillUpdateReachedEveryEdge: ${it.value.timeTillUpdateReachedEveryEdge}, " + "createTimestamp: ${it.value.createTimestamp}, " + timePerNode
-            )
+    fun print() {
+        updates.forEach {
+            println("update: ${it.key} | initializedAt: ${it.value.initializedAt} | arrivedAtAllServers: ${it.value.arrivedAtAllServersAt} | arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt}")
         }
     }
 }

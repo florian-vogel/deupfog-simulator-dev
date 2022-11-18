@@ -1,12 +1,12 @@
 import java.util.PriorityQueue
 
-class Simulator() {
+class Simulator(val metricsCollector: MetricsCollector<out UpdatableType>) {
     companion object {
         private var currentTimestamp: Int = 0
         private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
-        val metrics = MetricsCollector("metrics1")
+        var metrics: MetricsCollector<out UpdatableType>? = null
 
         fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
@@ -19,6 +19,14 @@ class Simulator() {
         fun setTimestamp(value: Int) {
             currentTimestamp = value
         }
+
+        fun getUpdateMetrics(): UpdateMetricsCollector<out UpdatableType>? {
+            return metrics?.updateMetricsCollector
+        }
+    }
+
+    fun setMetrics(metricsCollector: MetricsCollector<out UpdatableType>) {
+        metrics = metricsCollector
     }
 
     // TODO: specify order for callbacks at the same timestep (package arrive before requestPackage arrive)

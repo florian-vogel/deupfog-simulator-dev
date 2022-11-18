@@ -33,10 +33,14 @@ class Software(override val name: String) : UpdatableType {
 
 class RunningSoftware(type: Software, versionNumber: Int, val size: Int) : UpdatableState<Software>(type, versionNumber)
 
-class SoftwareUpdate<TUpdatable : UpdatableType>(
-    override val type: TUpdatable,
+class SoftwareUpdate(
+    override val type: Software,
     override val updatesToVersion: Int,
     override val size: Int
 ) :
-    UpdatableUpdate<TUpdatable> {
+    UpdatableUpdate<Software> {
+    init {
+        Simulator.getUpdateMetrics()?.registerUpdate(this)
+        println("create upate with metrics: ${Simulator.getUpdateMetrics()}")
+    }
 }

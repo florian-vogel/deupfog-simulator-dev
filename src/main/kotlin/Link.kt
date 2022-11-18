@@ -4,7 +4,7 @@ import java.util.*
 class UnidirectionalLink(
     val from: Node,
     val to: Node,
-    private val queue: LinkedList<Package>,
+    private val queue: LinkedList<Package> = LinkedList(),
 ) {
     // TODO: allow multiple transmissions at the same time, instead track used bandwith
     private var currentTransmission: Transmission? = null
