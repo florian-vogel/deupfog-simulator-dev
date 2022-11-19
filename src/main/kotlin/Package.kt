@@ -4,27 +4,27 @@ interface Package {
     val size: Int
 }
 
-interface UpdateRequest<TUpdatable : UpdatableType> : Package {
-    val requesterUpdatables: List<UpdatableState<TUpdatable>>
+interface UpdateRequest : Package {
+    val softwareStates: List<SoftwareState>
 }
 
-data class PullLatestUpdatesRequest<TUpdatable : UpdatableType>(
+data class PullLatestUpdatesRequest(
     override val size: Int,
-    override val initialPosition: UpdateReceiverNode<TUpdatable>,
-    override val destination: Server<TUpdatable>,
-    override val requesterUpdatables: List<UpdatableState<TUpdatable>>,
-) : UpdateRequest<TUpdatable>
+    override val initialPosition: UpdateReceiverNode,
+    override val destination: Server,
+    override val softwareStates: List<SoftwareState>,
+) : UpdateRequest
 
-data class RegisterForUpdatesRequest<TUpdatable : UpdatableType>(
+data class RegisterForUpdatesRequest(
     override val size: Int,
-    override val initialPosition: UpdateReceiverNode<TUpdatable>,
-    override val destination: Server<TUpdatable>,
-    override val requesterUpdatables: List<UpdatableState<TUpdatable>>,
-) : UpdateRequest<TUpdatable>
+    override val initialPosition: UpdateReceiverNode,
+    override val destination: Server,
+    override val softwareStates: List<SoftwareState>,
+) : UpdateRequest
 
-data class UpdateResponse<TUpdatable : UpdatableType>(
+data class UpdatePackage(
     override val initialPosition: Node,
     override val destination: Node,
     override val size: Int,
-    val update: UpdatableUpdate<TUpdatable>
+    val update: SoftwareUpdate
 ) : Package

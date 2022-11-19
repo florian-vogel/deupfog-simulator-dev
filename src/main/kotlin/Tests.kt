@@ -1,17 +1,41 @@
-import java.util.*
-import kotlin.collections.HashMap
-
-fun createSimpleTest(metrics: MetricsCollector<Software>): List<InitPackageAtNodeCallback> {
+fun createSimpleTest(): Simulator.SimulationParams {
     val software = Software("software")
-    val serverNode = Server(mutableListOf(), 10, listOf(), listOf(software), UpdateRetrievalParams())
-    val edgeNode = Edge(mutableListOf(), 10, listOf(serverNode), listOf(software), UpdateRetrievalParams(true))
-
-    val link = UnidirectionalLink(serverNode, edgeNode)
-    serverNode.addLink(link)
-
-    val update = SoftwareUpdate(software, 2, 1)
-    val p = UpdateResponse(serverNode, serverNode, 1, update)
+    val serverNode = Server(10, listOf(), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams())
+    val edgeNode = Edge(10, listOf(serverNode), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams(true))
+    UnidirectionalLink(serverNode, edgeNode)
+    UnidirectionalLink(edgeNode, serverNode)
 
 
-    return listOf(InitPackageAtNodeCallback(0, p))
+    val update = SoftwareUpdate(software, 1, 1, 0) { oldSize -> oldSize + 1 }
+
+    val edges = listOf(edgeNode)
+    val servers = listOf(serverNode)
+    val updates = listOf(Simulator.InitialUpdateParams(update, 0, serverNode))
+
+    return Simulator.SimulationParams(edges, servers, updates)
+}
+
+fun createSimpleTest2(): Simulator.SimulationParams {
+    val software = Software("software")
+    // TODO: make list of registerd edges initializable with non empty
+    val serverNode = Server(10, listOf(), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams())
+    val serverNode2 = Server(10, listOf(serverNode), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams(true))
+    val edgeNode = Edge(10, listOf(serverNode2), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams(true))
+    val edgeNode2 = Edge(10, listOf(serverNode2), listOf(SoftwareState(software, 0, 0)), UpdateRetrievalParams(true))
+    UnidirectionalLink(serverNode, serverNode2)
+    UnidirectionalLink(serverNode2, serverNode)
+    UnidirectionalLink(serverNode2, edgeNode)
+    UnidirectionalLink(edgeNode, serverNode2)
+    UnidirectionalLink(serverNode2, edgeNode2)
+    UnidirectionalLink(edgeNode2, serverNode2)
+
+
+    val update = SoftwareUpdate(software, 1, 1, 0) { oldSize -> oldSize + 1 }
+    val update2 = SoftwareUpdate(software, 2, 1,0) { oldSize -> oldSize + 1 }
+
+    val edges = listOf(edgeNode)
+    val servers = listOf(serverNode, serverNode2)
+    val updates = listOf(Simulator.InitialUpdateParams(update, 0, serverNode), Simulator.InitialUpdateParams(update2, 0, serverNode))
+
+    return Simulator.SimulationParams(edges, servers, updates)
 }

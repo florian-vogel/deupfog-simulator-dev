@@ -1,28 +1,6 @@
-open class UpdatableState<TUpdatable : UpdatableType>(
-    val type: TUpdatable, var versionNumber: Int = 0
-) {
-    fun applyUpdate(update: UpdatableUpdate<TUpdatable>) {
-        if (type.updateCompatible(versionNumber, update.updatesToVersion)) {
-            versionNumber = update.updatesToVersion
-        }
-    }
-}
+class Software(val name: String) {
 
-interface UpdatableType {
-    val name: String
-
-    fun updateCompatible(fromVersion: Int, toVersion: Int): Boolean
-}
-
-interface UpdatableUpdate<TUpdatable : UpdatableType> {
-    val type: TUpdatable
-    val updatesToVersion: Int
-    val size: Int
-}
-
-class Software(override val name: String) : UpdatableType {
-
-    override fun updateCompatible(fromVersion: Int, toVersion: Int): Boolean {
+    fun updateCompatible(fromVersion: Int, toVersion: Int): Boolean {
         return updatesOnlyOneVersion(fromVersion, toVersion)
     }
 
@@ -31,16 +9,20 @@ class Software(override val name: String) : UpdatableType {
     }
 }
 
-class RunningSoftware(type: Software, versionNumber: Int, val size: Int) : UpdatableState<Software>(type, versionNumber)
-
-class SoftwareUpdate(
-    override val type: Software,
-    override val updatesToVersion: Int,
-    override val size: Int
-) :
-    UpdatableUpdate<Software> {
-    init {
-        Simulator.getUpdateMetrics()?.registerUpdate(this)
-        println("create upate with metrics: ${Simulator.getUpdateMetrics()}")
+// TODO: rename to smt like software state
+class SoftwareState(val type: Software, var versionNumber: Int, var size: Int) {
+    fun applyUpdate(update: SoftwareUpdate) {
+        if (type.updateCompatible(versionNumber, update.updatesToVersion)) {
+            versionNumber = update.updatesToVersion
+            size = update.newSoftwareSize(size)
+        }
     }
 }
+
+class SoftwareUpdate(
+    val type: Software,
+    val updatesToVersion: Int,
+    val size: Int,
+    val initializeTimestamp: Int,
+    val newSoftwareSize: (oldSize: Int) -> Int,
+)

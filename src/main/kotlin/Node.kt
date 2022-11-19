@@ -1,15 +1,16 @@
-import java.util.*
-
 open class Node(
-    private val links: MutableList<UnidirectionalLink>, private val capacity: Int,
+    private val capacity: Int, private val links: MutableList<UnidirectionalLink> = mutableListOf(),
 ) {
 
     open fun receive(p: Package) {
         // TODO maybe make payload only accessible by destination node
         if (!arrivedAtDestination(p, this)) {
             forward(p)
-            return
         }
+    }
+
+    open fun addLink(link: UnidirectionalLink) {
+        links.add(link)
     }
 
     fun forward(p: Package) {
@@ -26,10 +27,6 @@ open class Node(
         return links.find { it.to == node }
     }
 
-    fun addLink(link: UnidirectionalLink) {
-        links.add(link)
-    }
-
     fun getCapacityInUse(): Int {
         return this.links.sumOf { it.elementsWaiting() }
     }
@@ -42,37 +39,48 @@ data class UpdateRetrievalParams(
     val sendUpdateRequestsInterval: Int? = null
 )
 
-abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
-    links: MutableList<UnidirectionalLink>,
+abstract class UpdateReceiverNode(
     capacity: Int,
-    private val responsibleServer: List<Server<TUpdatable>>,
-    private val listeningFor: List<TUpdatable>,
+    private val responsibleServers: List<Server>,
+    private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
-) : Node(links, capacity) {
+    links: MutableList<UnidirectionalLink> = mutableListOf(),
+) : Node(capacity, links) {
 
-    private val updateRegistry = mutableMapOf<TUpdatable, MutableList<UpdatableUpdate<TUpdatable>>>()
     private var pullRequestSchedule: TimedCallback? = null
 
     init {
+        // TODO: does this whole onconnected functionality make sense
         onConnected()
     }
 
     override fun receive(p: Package) {
         super.receive(p)
-        if (p is UpdateResponse<*>) {
-            processUpdate(p as UpdateResponse<TUpdatable>)
+        if (!arrivedAtDestination(p, this)) {
+            return
+        }
+        if (p is UpdatePackage) {
+            processUpdate(p.update)
         }
     }
 
-    open fun processUpdate(request: UpdateResponse<TUpdatable>) {
-        updateUpdateRegistry(request.update)
+    override fun addLink(link: UnidirectionalLink) {
+        super.addLink(link)
+        registerAtServerForNewLink(link)
+    }
+
+    open fun processUpdate(update: SoftwareUpdate) {
+        updateRunningSoftware(update)
+    }
+
+    open fun listeningFor(): List<SoftwareState> {
+        return runningSoftware
     }
 
     fun onConnected() {
+        // TODO: make it possible to initialize with already registered nodes
         if (updateRetrievalParams.registerAtServerForUpdates) {
             registerAtServer()
-            sendPullRequest()
-
         }
         if (updateRetrievalParams.sendUpdateRequestsInterval !== null) {
             initPullRequestSchedule()
@@ -83,31 +91,31 @@ abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
         removePullRequestSchedule()
     }
 
-    fun getInUpdateRegistry(updatableType: UpdatableType): List<UpdatableUpdate<TUpdatable>>? {
-        return updateRegistry[updatableType]
-    }
-
-    private fun updateUpdateRegistry(update: UpdatableUpdate<TUpdatable>) {
-        if (updateRegistry[update.type] == null) {
-            updateRegistry[update.type] = mutableListOf(update)
-        } else {
-            updateRegistry[update.type]!!.add(update)
-        }
+    private fun updateRunningSoftware(update: SoftwareUpdate) {
+        // TODO: see if this works
+        runningSoftware.find { it.type == update.type }?.applyUpdate(update)
     }
 
     private fun registerAtServer() {
-        responsibleServer.forEach {
-            val request = RegisterForUpdatesRequest(1, this, it, getCurrentUpdatableStates())
+        responsibleServers.forEach {
+            val request = RegisterForUpdatesRequest(1, this, it, listeningFor())
             val nextHop = findShortestPath(this, it)?.peek()
             if (nextHop != null) {
                 getLinkTo(nextHop)?.lineUpPackage(request)
             }
+        }
+    }
+
+    private fun registerAtServerForNewLink(newLink: UnidirectionalLink) {
+        if (newLink.to is Server && updateRetrievalParams.registerAtServerForUpdates) {
+            val request = RegisterForUpdatesRequest(1, this, newLink.to, listeningFor())
+            newLink.lineUpPackage(request)
         }
     }
 
     private fun sendPullRequest() {
-        responsibleServer.forEach {
-            val request = PullLatestUpdatesRequest(1, this, it, getCurrentUpdatableStates())
+        responsibleServers.forEach {
+            val request = PullLatestUpdatesRequest(1, this, it, listeningFor())
             val nextHop = findShortestPath(this, it)?.peek()
             if (nextHop != null) {
                 getLinkTo(nextHop)?.lineUpPackage(request)
@@ -115,16 +123,6 @@ abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
         }
     }
 
-    private fun getCurrentUpdatableStates(): List<UpdatableState<TUpdatable>> {
-        val states = mutableListOf<UpdatableState<TUpdatable>>()
-        updateRegistry.forEach {
-            val state = UpdatableState(it.key)
-            it.value.sortBy { update -> update.updatesToVersion }
-            it.value.forEach { update -> state.applyUpdate(update) }
-            states.add(state)
-        }
-        return states
-    }
 
     private fun initPullRequestSchedule() {
         // TODO
@@ -136,35 +134,50 @@ abstract class UpdateReceiverNode<TUpdatable : UpdatableType>(
 
 }
 
-open class Server<TUpdatable : UpdatableType>(
-    links: MutableList<UnidirectionalLink>,
+// TODO: server und updateReceiverNode trennen
+open class Server(
     capacity: Int,
-    responsibleServer: List<Server<TUpdatable>>,
-    listeningFor: List<TUpdatable>,
-    updateRetrievalParams: UpdateRetrievalParams
-) : UpdateReceiverNode<TUpdatable>(links, capacity, responsibleServer, listeningFor, updateRetrievalParams) {
-    private val receiverRegistry =
-        mutableMapOf<UpdateReceiverNode<TUpdatable>, MutableList<UpdatableState<TUpdatable>>>()
+    responsibleServer: List<Server>,
+    // servers can have software which needs to be updated
+    runningSoftware: List<SoftwareState>,
+    updateRetrievalParams: UpdateRetrievalParams,
+    links: MutableList<UnidirectionalLink> = mutableListOf(),
+) : UpdateReceiverNode(capacity, responsibleServer, runningSoftware, updateRetrievalParams, links) {
+    private val receiverRegistry = mutableMapOf<UpdateReceiverNode, MutableList<SoftwareState>>()
+
+    // servers have additionally to running Software a registry for all received updates which are
+    // their clients (updateRecieverNodes) listening to
+    private var updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>>? = null
 
     override fun receive(p: Package) {
         super.receive(p)
-        // TODO: work with reified and inline functions
-        if (p is UpdateRequest<*>) {
-            processRequest(p as UpdateRequest<TUpdatable>)
+        if (!arrivedAtDestination(p, this)) {
+            return
+        }
+        if (p is UpdateRequest) {
+            processRequest(p)
         }
     }
 
-    override fun processUpdate(request: UpdateResponse<TUpdatable>) {
-        super.processUpdate(request)
+    override fun processUpdate(update: SoftwareUpdate) {
+        super.processUpdate(update)
+        Simulator.getUpdateMetrics()?.onArriveAtServer(update, this)
+        updateUpdateRegistry(update)
         initUpdatePackages()
     }
 
-    private fun processRequest(request: UpdateRequest<TUpdatable>) {
-        if (request is PullLatestUpdatesRequest<TUpdatable>) {
-            initUpdatePackageAndPassToLink(request.initialPosition, request.requesterUpdatables)
-        } else if (request is RegisterForUpdatesRequest<TUpdatable>) {
-            registerNodeInLocalRegistry(request.initialPosition, request.requesterUpdatables)
-            initUpdatePackageAndPassToLink(request.initialPosition, request.requesterUpdatables)
+    override fun listeningFor(): List<SoftwareState> {
+        val receiverNodeListeningFor = super.listeningFor()
+        val serverNodeListeningFor = getCurrentUpdateRegistryStates()
+        return receiverNodeListeningFor + serverNodeListeningFor
+    }
+
+    private fun processRequest(request: UpdateRequest) {
+        if (request is PullLatestUpdatesRequest) {
+            initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
+        } else if (request is RegisterForUpdatesRequest) {
+            registerNodeInLocalRegistry(request.initialPosition, request.softwareStates)
+            initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
         }
     }
 
@@ -174,9 +187,32 @@ open class Server<TUpdatable : UpdatableType>(
         }
     }
 
+    fun getInUpdateRegistry(updatableType: Software): List<SoftwareUpdate>? {
+        return updateRegistry?.get(updatableType)
+    }
+
+    private fun updateUpdateRegistry(update: SoftwareUpdate) {
+        if (updateRegistry?.get(update.type) == null) {
+            updateRegistry = mutableMapOf(update.type to mutableListOf(update))
+        } else {
+            updateRegistry!![update.type]!!.add(update)
+        }
+    }
+
+    private fun getCurrentUpdateRegistryStates(): List<SoftwareState> {
+        val states = mutableListOf<SoftwareState>()
+        updateRegistry?.forEach {
+            val state = SoftwareState(it.key, 0, 0)
+            it.value.sortBy { update -> update.updatesToVersion }
+            it.value.forEach { update -> state.applyUpdate(update) }
+            states.add(state)
+        }
+        return states
+    }
+
     // TODO: make listeningFor non nullable
     private fun initUpdatePackageAndPassToLink(
-        target: UpdateReceiverNode<TUpdatable>, states: List<UpdatableState<TUpdatable>>
+        target: UpdateReceiverNode, states: List<SoftwareState>
     ) {
         states.map {
             getInUpdateRegistry(it.type)?.filter { update ->
@@ -185,17 +221,19 @@ open class Server<TUpdatable : UpdatableType>(
                 )
             }?.maxBy { compatibleUpdate -> compatibleUpdate.updatesToVersion }
         }?.forEach {
-            this.getLinkTo(target)?.lineUpPackage(
-                UpdateResponse(this, target, it!!.size, it)
-            )
+            if (it != null) {
+                this.getLinkTo(target)?.lineUpPackage(
+                    UpdatePackage(this, target, it!!.size, it)
+                )
+            }
         }
     }
 
     private fun registerNodeInLocalRegistry(
-        node: UpdateReceiverNode<TUpdatable>, software: List<UpdatableState<TUpdatable>>?
+        node: UpdateReceiverNode, listeningFor: List<SoftwareState>?
     ) {
-        if (software != null) {
-            receiverRegistry[node] = software.toMutableList()
+        if (listeningFor != null) {
+            receiverRegistry[node] = listeningFor.toMutableList()
         } else {
             receiverRegistry[node] = mutableListOf()
         }
@@ -209,19 +247,19 @@ interface UnreliableElement {
     fun goOffline()
 }
 
-class Edge<TUpdatable : UpdatableType>(
-    links: MutableList<UnidirectionalLink>,
+class Edge(
     maxElements: Int,
-    responsibleUpdateServer: List<Server<TUpdatable>>,
-    listeningFor: List<TUpdatable>,
+    responsibleUpdateServer: List<Server>,
+    runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
+    links: MutableList<UnidirectionalLink> = mutableListOf(),
     override var online: Boolean = true,
-) : UpdateReceiverNode<TUpdatable>(links, maxElements, responsibleUpdateServer, listeningFor, updateRetrievalParams),
+) : UpdateReceiverNode(maxElements, responsibleUpdateServer, runningSoftware, updateRetrievalParams, links),
     UnreliableElement {
 
-    override fun processUpdate(request: UpdateResponse<TUpdatable>) {
-        super.processUpdate(request)
-        Simulator.getUpdateMetrics()?.onArriveAtEdge(request.update as UpdatableUpdate<Software>, this as Edge<Software>)
+    override fun processUpdate(update: SoftwareUpdate) {
+        super.processUpdate(update)
+        Simulator.getUpdateMetrics()?.onArriveAtEdge(update, this)
     }
 
     override fun goOnline() {

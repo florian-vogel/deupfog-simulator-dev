@@ -1,12 +1,12 @@
 import java.util.PriorityQueue
 
-class Simulator(val metricsCollector: MetricsCollector<out UpdatableType>) {
+class Simulator() {
     companion object {
         private var currentTimestamp: Int = 0
         private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
             c1.atInstant.compareTo(c2.atInstant)
         }
-        var metrics: MetricsCollector<out UpdatableType>? = null
+        var metrics: MetricsCollector? = null
 
         fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
@@ -20,22 +20,35 @@ class Simulator(val metricsCollector: MetricsCollector<out UpdatableType>) {
             currentTimestamp = value
         }
 
-        fun getUpdateMetrics(): UpdateMetricsCollector<out UpdatableType>? {
+        fun getUpdateMetrics(): UpdateMetricsCollector? {
             return metrics?.updateMetricsCollector
         }
     }
 
-    fun setMetrics(metricsCollector: MetricsCollector<out UpdatableType>) {
+    fun setMetrics(metricsCollector: MetricsCollector) {
         metrics = metricsCollector
     }
 
+    data class InitialUpdateParams(
+        val update: SoftwareUpdate,
+        val atInstant: Int,
+        val initialPosition: Node
+    )
+
+    data class SimulationParams(
+        val edges: List<Edge>, val servers: List<Server>, val updatesParams: List<InitialUpdateParams>
+    )
+
     // TODO: specify order for callbacks at the same timestep (package arrive before requestPackage arrive)
     fun runSimulation(
-        initialTimedCallbacks: List<InitPackageAtNodeCallback>?
+        // since I specify all network parameters here the topology is static as well as the update schedule
+        params: SimulationParams
     ) {
-        if (initialTimedCallbacks !== null) {
-            processInitialTimedCallbacks(initialTimedCallbacks)
-        }
+        // initialize
+        setMetrics(MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams.map { it.update }))
+        processInitialUpdates(params.updatesParams)
+
+        // main loop
         while (true) {
             if (callbacks.isEmpty() || getCurrentTimestamp() > 300) {
                 break
@@ -45,11 +58,16 @@ class Simulator(val metricsCollector: MetricsCollector<out UpdatableType>) {
             setTimestamp(currentCallback.atInstant)
             currentCallback.runCallback()
         }
+
+        // cleanup
+        metrics?.printMetrics()
     }
 
-    private fun processInitialTimedCallbacks(initialTimedCallbacks: List<InitPackageAtNodeCallback>) {
-        initialTimedCallbacks.stream().forEach {
-            callbacks.add(it)
+    private fun processInitialUpdates(updates: List<InitialUpdateParams>) {
+        updates.stream().forEach {
+            val p = UpdatePackage(it.initialPosition, it.initialPosition, 1, it.update)
+            val initUpdateCallback = InitPackageAtNodeCallback(it.atInstant, p)
+            callbacks.add(initUpdateCallback)
         }
     }
 }
