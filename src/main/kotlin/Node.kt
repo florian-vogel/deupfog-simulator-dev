@@ -1,22 +1,46 @@
+open class InitialNodeState(
+    var online: Boolean,
+)
+
 open class Node(
-    private val capacity: Int, private val links: MutableList<UnidirectionalLink> = mutableListOf(),
+    private val capacity: Int, initialNodeState: InitialNodeState = InitialNodeState(false)
 ) {
+    private var online = initialNodeState.online
+    private val links: MutableList<UnidirectionalLink> = mutableListOf()
 
     open fun receive(p: Package) {
         // TODO maybe make payload only accessible by destination node
-        if (!arrivedAtDestination(p, this)) {
-            forward(p)
+        if (canReceive()) {
+            forwardIfNotDestination(p)
         }
     }
 
-    open fun addLink(link: UnidirectionalLink) {
-        links.add(link)
+    open fun setOnline(value: Boolean) {
+        online = value
+    }
+
+    open fun canReceive(): Boolean {
+        return online
+    }
+
+    fun getOnline(): Boolean {
+        return online
+    }
+
+    fun forwardIfNotDestination(p: Package) {
+        if (!arrivedAtDestination(p, this)) {
+            forward(p)
+        }
     }
 
     fun forward(p: Package) {
         // TODO handle no path found exeption consistent
         val nextHop = findShortestPath(this, p.destination)
         getLinkTo(nextHop!!.peek())!!.lineUpPackage(p)
+    }
+
+    fun addLink(link: UnidirectionalLink) {
+        links.add(link)
     }
 
     fun getLinks(): List<UnidirectionalLink> {
@@ -40,33 +64,32 @@ data class UpdateRetrievalParams(
 )
 
 abstract class UpdateReceiverNode(
+    // TODO: define capacity per link or per node?
     capacity: Int,
     private val responsibleServers: List<Server>,
+    // TODO: either increase version of registerd nodes in server or send updateReceived notification (updates runningSoftware states) when edge received update
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
-    links: MutableList<UnidirectionalLink> = mutableListOf(),
-) : Node(capacity, links) {
-
+    initialNodeState: InitialNodeState
+) : Node(capacity, initialNodeState) {
     private var pullRequestSchedule: TimedCallback? = null
-
-    init {
-        // TODO: does this whole onconnected functionality make sense
-        onConnected()
-    }
 
     override fun receive(p: Package) {
         super.receive(p)
-        if (!arrivedAtDestination(p, this)) {
-            return
-        }
-        if (p is UpdatePackage) {
+        if (canReceive() && arrivedAtDestination(p, this) && p is UpdatePackage) {
             processUpdate(p.update)
         }
     }
 
-    override fun addLink(link: UnidirectionalLink) {
-        super.addLink(link)
-        registerAtServerForNewLink(link)
+    override fun setOnline(value: Boolean) {
+        if (value != getOnline()) {
+            if (value) {
+                onConnected()
+            } else {
+                onDisconnected()
+            }
+        }
+        super.setOnline(value)
     }
 
     open fun processUpdate(update: SoftwareUpdate) {
@@ -77,8 +100,7 @@ abstract class UpdateReceiverNode(
         return runningSoftware
     }
 
-    fun onConnected() {
-        // TODO: make it possible to initialize with already registered nodes
+    private fun onConnected() {
         if (updateRetrievalParams.registerAtServerForUpdates) {
             registerAtServer()
         }
@@ -87,13 +109,18 @@ abstract class UpdateReceiverNode(
         }
     }
 
-    fun onDisconnected() {
+    private fun onDisconnected() {
         removePullRequestSchedule()
     }
 
     private fun updateRunningSoftware(update: SoftwareUpdate) {
         // TODO: see if this works
-        runningSoftware.find { it.type == update.type }?.applyUpdate(update)
+        val targetSoftware = runningSoftware::find { it.type == update.type }
+        if (targetSoftware != null) {
+            targetSoftware.applyUpdate(update)
+            registerAtServer()
+        }
+
     }
 
     private fun registerAtServer() {
@@ -103,13 +130,6 @@ abstract class UpdateReceiverNode(
             if (nextHop != null) {
                 getLinkTo(nextHop)?.lineUpPackage(request)
             }
-        }
-    }
-
-    private fun registerAtServerForNewLink(newLink: UnidirectionalLink) {
-        if (newLink.to is Server && updateRetrievalParams.registerAtServerForUpdates) {
-            val request = RegisterForUpdatesRequest(1, this, newLink.to, listeningFor())
-            newLink.lineUpPackage(request)
         }
     }
 
@@ -134,6 +154,10 @@ abstract class UpdateReceiverNode(
 
 }
 
+class InitialServerState(
+    online: Boolean, val receivers: List<UpdateReceiverNode>? = null, val updates: List<SoftwareUpdate>? = null
+) : InitialNodeState(online)
+
 // TODO: server und updateReceiverNode trennen
 open class Server(
     capacity: Int,
@@ -141,13 +165,13 @@ open class Server(
     // servers can have software which needs to be updated
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    links: MutableList<UnidirectionalLink> = mutableListOf(),
-) : UpdateReceiverNode(capacity, responsibleServer, runningSoftware, updateRetrievalParams, links) {
-    private val receiverRegistry = mutableMapOf<UpdateReceiverNode, MutableList<SoftwareState>>()
+    initialServerState: InitialServerState
+) : UpdateReceiverNode(capacity, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState) {
+    private var receiverRegistry = initialServerState.receivers?.associate { it to it.listeningFor() }?.toMutableMap()
 
     // servers have additionally to running Software a registry for all received updates which are
     // their clients (updateRecieverNodes) listening to
-    private var updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>>? = null
+    private var updateRegistry = initialServerState.updates?.associate { it.type to mutableListOf(it) }?.toMutableMap()
 
     override fun receive(p: Package) {
         super.receive(p)
@@ -177,18 +201,13 @@ open class Server(
             initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
         } else if (request is RegisterForUpdatesRequest) {
             registerNodeInLocalRegistry(request.initialPosition, request.softwareStates)
-            initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
         }
     }
 
     private fun initUpdatePackages() {
-        receiverRegistry.forEach {
+        receiverRegistry?.forEach {
             initUpdatePackageAndPassToLink(it.key, it.value)
         }
-    }
-
-    fun getInUpdateRegistry(updatableType: Software): List<SoftwareUpdate>? {
-        return updateRegistry?.get(updatableType)
     }
 
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
@@ -210,20 +229,19 @@ open class Server(
         return states
     }
 
-    // TODO: make listeningFor non nullable
     private fun initUpdatePackageAndPassToLink(
-        target: UpdateReceiverNode, states: List<SoftwareState>
+        target: UpdateReceiverNode, targetSoftwareStates: List<SoftwareState>
     ) {
-        states.map {
-            getInUpdateRegistry(it.type)?.filter { update ->
+        targetSoftwareStates.map {
+            updateRegistry?.get(it.type)?.filter { update ->
                 it.type.updateCompatible(
                     it.versionNumber, update.updatesToVersion
                 )
-            }?.maxBy { compatibleUpdate -> compatibleUpdate.updatesToVersion }
-        }?.forEach {
+            }?.maxByOrNull { compatibleUpdate -> compatibleUpdate.updatesToVersion }
+        }.forEach {
             if (it != null) {
                 this.getLinkTo(target)?.lineUpPackage(
-                    UpdatePackage(this, target, it!!.size, it)
+                    UpdatePackage(this, target, it.size, it)
                 )
             }
         }
@@ -232,19 +250,16 @@ open class Server(
     private fun registerNodeInLocalRegistry(
         node: UpdateReceiverNode, listeningFor: List<SoftwareState>?
     ) {
+        if (receiverRegistry == null) {
+            receiverRegistry = mutableMapOf()
+        }
         if (listeningFor != null) {
-            receiverRegistry[node] = listeningFor.toMutableList()
+            receiverRegistry?.set(node, listeningFor.toMutableList())
+            initUpdatePackageAndPassToLink(node, listeningFor)
         } else {
-            receiverRegistry[node] = mutableListOf()
+            receiverRegistry?.set(node, mutableListOf())
         }
     }
-}
-
-interface UnreliableElement {
-    var online: Boolean
-
-    fun goOnline()
-    fun goOffline()
 }
 
 class Edge(
@@ -252,27 +267,13 @@ class Edge(
     responsibleUpdateServer: List<Server>,
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    links: MutableList<UnidirectionalLink> = mutableListOf(),
-    override var online: Boolean = true,
-) : UpdateReceiverNode(maxElements, responsibleUpdateServer, runningSoftware, updateRetrievalParams, links),
-    UnreliableElement {
+    initialNodeState: InitialNodeState
+) : UpdateReceiverNode(
+    maxElements, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState
+) {
 
     override fun processUpdate(update: SoftwareUpdate) {
         super.processUpdate(update)
         Simulator.getUpdateMetrics()?.onArriveAtEdge(update, this)
-    }
-
-    override fun goOnline() {
-        if (online) {
-            return
-        } else {
-            online = true
-            onConnected()
-        }
-    }
-
-    override fun goOffline() {
-        online = false
-        onDisconnected()
     }
 }

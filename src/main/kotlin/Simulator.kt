@@ -30,9 +30,7 @@ class Simulator() {
     }
 
     data class InitialUpdateParams(
-        val update: SoftwareUpdate,
-        val atInstant: Int,
-        val initialPosition: Node
+        val update: SoftwareUpdate, val atInstant: Int, val initialPosition: Node
     )
 
     data class SimulationParams(
@@ -45,8 +43,12 @@ class Simulator() {
         params: SimulationParams
     ) {
         // initialize
-        setMetrics(MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams.map { it.update }))
+        setMetrics(
+            MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams.map { it.update })
+        )
         processInitialUpdates(params.updatesParams)
+        params.edges.forEach { it.setOnline(true) }
+        params.servers.forEach { it.setOnline(true) }
 
         // main loop
         while (true) {
