@@ -1,6 +1,7 @@
 import java.util.*
 
 // TODO: think about bidirectional links -> Link Interface needed
+// or just as two unidirectional links
 class UnidirectionalLink(
     from: Node,
     val to: Node,

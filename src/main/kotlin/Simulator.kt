@@ -25,7 +25,7 @@ class Simulator() {
         }
     }
 
-    fun setMetrics(metricsCollector: MetricsCollector) {
+    private fun setMetrics(metricsCollector: MetricsCollector) {
         metrics = metricsCollector
     }
 

@@ -1,23 +1,19 @@
 import java.util.*
-import kotlin.collections.HashMap
-import kotlin.collections.LinkedHashMap
 
 class MetricsCollector(
     val name: String, edges: List<Edge>, servers: List<Server>, updates: List<SoftwareUpdate>
 ) {
-    // val linkMetricsCollector = LinkMetricsCollector()
     val updateMetricsCollector = UpdateMetricsCollector(edges, servers, updates)
-    // private val edgeRegistry = mutableMapOf<Software, LinkedList<EdgeNode>>()
-    // private val serverRegistry: LinkedList<ServerNode> = LinkedList()
+    // val requestMetricsCollector
+    // TODO: val linkMetricsCollector
 
     fun printMetrics() {
-        // this.linkMetricsCollector.printMetrics()
         this.updateMetricsCollector.print()
     }
 }
 
 class UpdateMetricsCollector(
-    private val edges: List<Edge>, private val servers: List<Server>, private val updates: List<SoftwareUpdate>
+    private val edges: List<Edge>, private val servers: List<Server>, updates: List<SoftwareUpdate>
 ) {
     data class UpdateMetricsOutput(
         val initializedAt: Int,
@@ -32,20 +28,36 @@ class UpdateMetricsCollector(
         var arrivedAtAllEdgesAt: Int? = null
     }
 
-    private val updateMetrics = updates.map { it to UpdateMetricsOutput(it.initializeTimestamp) }.toMap();
+    private val updateMetrics = updates.associateWith { UpdateMetricsOutput(it.initializeTimestamp) };
 
-    // TODO: one method that is called by the Node superclass, then work with type cases
-    fun onArriveAtEdge(update: SoftwareUpdate, edge: Edge) {
-        updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
-        if (updateArrivedAtAllEdges(update)) {
-            updateMetrics[update]?.arrivedAtAllEdgesAt = Simulator.getCurrentTimestamp()
+    fun onArrive(update: SoftwareUpdate, node: Node) {
+        if (node is Edge) {
+            onArriveAtEdge(update, node)
+        } else if (node is Server) {
+            onArriveAtServer(update, node)
         }
     }
 
-    fun onArriveAtServer(update: SoftwareUpdate, server: Server) {
-        updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
+    // TODO: one method that is called by the Node superclass, then work with type cases
+    private fun onArriveAtEdge(update: SoftwareUpdate, edge: Edge) {
+        if (updateArrivedAtAllEdges(update)) {
+            updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
+        } else {
+            updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
+            if (updateArrivedAtAllEdges(update)) {
+                updateMetrics[update]?.arrivedAtAllEdgesAt = Simulator.getCurrentTimestamp()
+            }
+        }
+    }
+
+    private fun onArriveAtServer(update: SoftwareUpdate, server: Server) {
         if (updateArrivedAtAllServers(update)) {
-            updateMetrics[update]?.arrivedAtAllServersAt= Simulator.getCurrentTimestamp()
+            updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
+        } else {
+            updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
+            if (updateArrivedAtAllServers(update)) {
+                updateMetrics[update]?.arrivedAtAllServersAt = Simulator.getCurrentTimestamp()
+            }
         }
     }
 
@@ -66,6 +78,8 @@ class UpdateMetricsCollector(
     fun print() {
         updateMetrics.forEach {
             println("update: ${it.key} | initializedAt: ${it.value.initializedAt} | arrivedAtAllServers: ${it.value.arrivedAtAllServersAt} | arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt}")
+            println("    arrivedAtServerTimeline: ${it.value.arrivedAtServerTimeline}")
+            println("    arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline}")
         }
     }
 }

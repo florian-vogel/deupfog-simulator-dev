@@ -1,5 +1,5 @@
 fun main(args: Array<String>) {
     val simulator = Simulator()
-    val runSimulationParams = createSimpleTest2()
+    val runSimulationParams = createSimpleTestPull()
     simulator.runSimulation(runSimulationParams)
 }

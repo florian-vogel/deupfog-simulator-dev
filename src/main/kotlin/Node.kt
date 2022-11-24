@@ -67,7 +67,7 @@ abstract class UpdateReceiverNode(
     // TODO: define capacity per link or per node?
     capacity: Int,
     private val responsibleServers: List<Server>,
-    // TODO: either increase version of registerd nodes in server or send updateReceived notification (updates runningSoftware states) when edge received update
+    // TODO: either increase version of registerd nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: InitialNodeState
@@ -93,6 +93,7 @@ abstract class UpdateReceiverNode(
     }
 
     open fun processUpdate(update: SoftwareUpdate) {
+        Simulator.getUpdateMetrics()?.onArrive(update, this)
         updateRunningSoftware(update)
     }
 
@@ -100,9 +101,22 @@ abstract class UpdateReceiverNode(
         return runningSoftware
     }
 
-    private fun onConnected() {
+    fun registerAtServer(listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates) {
-            registerAtServer()
+            responsibleServers.forEach {
+                val request = RegisterForUpdatesRequest(1, this, it, listeningFor)
+                val nextHop = findShortestPath(this, it)?.peek()
+                if (nextHop != null) {
+                    getLinkTo(nextHop)?.lineUpPackage(request)
+                }
+            }
+        }
+    }
+
+    private fun onConnected() {
+        // TODO: gucken ob diese parameter überall überprüft werden
+        if (updateRetrievalParams.registerAtServerForUpdates) {
+            registerAtServer(listeningFor())
         }
         if (updateRetrievalParams.sendUpdateRequestsInterval !== null) {
             initPullRequestSchedule()
@@ -114,26 +128,15 @@ abstract class UpdateReceiverNode(
     }
 
     private fun updateRunningSoftware(update: SoftwareUpdate) {
-        // TODO: see if this works
         val targetSoftware = runningSoftware::find { it.type == update.type }
         if (targetSoftware != null) {
             targetSoftware.applyUpdate(update)
-            registerAtServer()
+            registerAtServer(listeningFor())
         }
 
     }
 
-    private fun registerAtServer() {
-        responsibleServers.forEach {
-            val request = RegisterForUpdatesRequest(1, this, it, listeningFor())
-            val nextHop = findShortestPath(this, it)?.peek()
-            if (nextHop != null) {
-                getLinkTo(nextHop)?.lineUpPackage(request)
-            }
-        }
-    }
-
-    private fun sendPullRequest() {
+    private fun sendPullRequestsToResponsibleServers() {
         responsibleServers.forEach {
             val request = PullLatestUpdatesRequest(1, this, it, listeningFor())
             val nextHop = findShortestPath(this, it)?.peek()
@@ -145,20 +148,22 @@ abstract class UpdateReceiverNode(
 
 
     private fun initPullRequestSchedule() {
-        // TODO
+        if (updateRetrievalParams.sendUpdateRequestsInterval != null) {
+            Simulator.addCallback(RecursiveCallback(
+                Simulator.getCurrentTimestamp(), null, updateRetrievalParams.sendUpdateRequestsInterval
+            ) { sendPullRequestsToResponsibleServers() })
+        }
     }
 
     private fun removePullRequestSchedule() {
         pullRequestSchedule = null
     }
-
 }
 
 class InitialServerState(
     online: Boolean, val receivers: List<UpdateReceiverNode>? = null, val updates: List<SoftwareUpdate>? = null
 ) : InitialNodeState(online)
 
-// TODO: server und updateReceiverNode trennen
 open class Server(
     capacity: Int,
     responsibleServer: List<Server>,
@@ -185,15 +190,27 @@ open class Server(
 
     override fun processUpdate(update: SoftwareUpdate) {
         super.processUpdate(update)
-        Simulator.getUpdateMetrics()?.onArriveAtServer(update, this)
         updateUpdateRegistry(update)
         initUpdatePackages()
     }
 
     override fun listeningFor(): List<SoftwareState> {
-        val receiverNodeListeningFor = super.listeningFor()
-        val serverNodeListeningFor = getCurrentUpdateRegistryStates()
-        return receiverNodeListeningFor + serverNodeListeningFor
+        val runningSoftware = super.listeningFor()
+        val serverNodeListeningFor = getCurrentUpdateRegistryStates() + getCurrentReceiverRegistryStates()
+        val combined = runningSoftware + serverNodeListeningFor
+        val oneValueForEachType = mutableListOf<SoftwareState>()
+        combined.forEach { combinedValue ->
+            if (!oneValueForEachType.map { it.type }.contains(combinedValue.type)) {
+                oneValueForEachType.add(combinedValue)
+            } else {
+                val x = oneValueForEachType.find { combinedValue.type == it.type }
+                if (x != null && x.versionNumber < combinedValue.versionNumber) {
+                    oneValueForEachType.remove(x)
+                    oneValueForEachType.add(combinedValue)
+                }
+            }
+        }
+        return oneValueForEachType
     }
 
     private fun processRequest(request: UpdateRequest) {
@@ -229,6 +246,14 @@ open class Server(
         return states
     }
 
+    private fun getCurrentReceiverRegistryStates(): List<SoftwareState> {
+        val states = mutableListOf<SoftwareState>()
+        receiverRegistry?.forEach {
+            states += it.value
+        }
+        return states
+    }
+
     private fun initUpdatePackageAndPassToLink(
         target: UpdateReceiverNode, targetSoftwareStates: List<SoftwareState>
     ) {
@@ -253,9 +278,11 @@ open class Server(
         if (receiverRegistry == null) {
             receiverRegistry = mutableMapOf()
         }
+
         if (listeningFor != null) {
             receiverRegistry?.set(node, listeningFor.toMutableList())
             initUpdatePackageAndPassToLink(node, listeningFor)
+            registerAtServer(listeningFor())
         } else {
             receiverRegistry?.set(node, mutableListOf())
         }
@@ -270,10 +297,4 @@ class Edge(
     initialNodeState: InitialNodeState
 ) : UpdateReceiverNode(
     maxElements, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState
-) {
-
-    override fun processUpdate(update: SoftwareUpdate) {
-        super.processUpdate(update)
-        Simulator.getUpdateMetrics()?.onArriveAtEdge(update, this)
-    }
-}
+) {}

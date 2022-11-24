@@ -4,6 +4,7 @@ interface TimedCallback {
     fun cancelCallback()
 }
 
+// TODO: differenciate between finish sending and arriving? -> maybe not so important since the propagation delay in local networks is neglectable
 class CompleteTransmissionCallback(
     override val atInstant: Int, private val transmission: Transmission
 ) : TimedCallback {
@@ -25,4 +26,23 @@ open class InitPackageAtNodeCallback(
     }
 
     override fun cancelCallback() {}
+}
+
+open class RecursiveCallback(
+    override val atInstant: Int,
+    private val endInstant: Int?,
+    private val interval: Int,
+    private val customCallback: (() -> Unit)
+) : TimedCallback {
+    override fun runCallback() {
+        if (endInstant == null || atInstant <= endInstant) {
+            customCallback()
+            val nextCallInstant = atInstant + interval
+            Simulator.addCallback(RecursiveCallback(nextCallInstant, endInstant, interval, customCallback))
+        }
+    }
+
+    override fun cancelCallback() {
+        TODO("Not yet implemented")
+    }
 }
