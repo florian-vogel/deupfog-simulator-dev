@@ -159,7 +159,7 @@ fun createSimpleTest4(): Simulator.SimulationParams {
 
 fun createSimpleTestPull(): Simulator.SimulationParams {
     val software = Software("software")
-    val serverNode = Server(
+        val serverNode = Server(
         10,
         listOf(),
         listOf(SoftwareState(software, 0, 0)),
