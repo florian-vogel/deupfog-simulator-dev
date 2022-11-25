@@ -37,7 +37,6 @@ class Simulator() {
         val edges: List<Edge>, val servers: List<Server>, val updatesParams: List<InitialUpdateParams>
     )
 
-    // TODO: specify order for callbacks at the same timestep (package arrive before requestPackage arrive)
     fun runSimulation(
         // since I specify all network parameters here the topology is static as well as the update schedule
         params: SimulationParams
@@ -46,9 +45,9 @@ class Simulator() {
         setMetrics(
             MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams.map { it.update })
         )
-        processInitialUpdates(params.updatesParams)
         params.edges.forEach { it.setOnline(true) }
         params.servers.forEach { it.setOnline(true) }
+        processInitialUpdates(params.updatesParams)
 
         // main loop
         while (true) {

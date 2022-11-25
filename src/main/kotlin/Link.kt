@@ -1,42 +1,34 @@
-import java.util.*
-
 // TODO: think about bidirectional links -> Link Interface needed
 // or just as two unidirectional links
 class UnidirectionalLink(
-    from: Node,
-    val to: Node,
-    private val queue: LinkedList<Package> = LinkedList(),
+    val from: Node, val to: Node,
 ) {
+    private var getNextPackage: (UnidirectionalLink) -> Package? = { _ -> null }
+    private var currentTransmission: Transmission? = null
+
     init {
         from.addLink(this)
     }
 
-    // TODO: allow multiple transmissions at the same time, instead track used bandwith
-    private var currentTransmission: Transmission? = null
-
-    fun lineUpPackage(p: Package) {
-        queue.add(p)
-        tryTransmission()
-    }
-
-    fun elementsWaiting(): Int {
-        return queue.size
-    }
-
     fun transmissionFinished() {
-        currentTransmission = null
-        tryTransmission()
+        if (currentTransmission != null) {
+            from.removePackage(currentTransmission!!.p)
+            currentTransmission = null
+            val nextPackage = getNextPackage(this)
+            if (nextPackage != null) {
+                tryTransmission(nextPackage)
+            }
+        }
     }
 
-    fun tryTransmission() {
-        if (isFree() && queue.isNotEmpty()) {
-            val nextPackage = queue.remove()
+    fun tryTransmission(nextPackage: Package) {
+        if (currentTransmission == null) {
             // TODO: calculate transmission time
             currentTransmission = SimpleTransmission(nextPackage, 10, this)
         }
     }
 
-    private fun isFree(): Boolean {
-        return currentTransmission == null
+    fun setGetNextPackage(getNext: (UnidirectionalLink) -> Package?) {
+        getNextPackage = getNext
     }
 }
