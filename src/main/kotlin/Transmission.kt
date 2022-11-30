@@ -16,7 +16,7 @@ class SimpleTransmission(
     }
 
     override fun startTransmitting() {
-        val callback = CompleteTransmissionCallback(Simulator.getCurrentTimestamp() + transmissionTime, this)
+        val callback = TimedCallback(Simulator.getCurrentTimestamp() + transmissionTime) { completeTransmitting() }
         Simulator.addCallback(callback)
     }
 

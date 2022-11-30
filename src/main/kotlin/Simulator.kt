@@ -12,6 +12,10 @@ class Simulator() {
             this.callbacks.add(c)
         }
 
+        fun cancelCallback(c: TimedCallback) {
+            this.callbacks.remove(c)
+        }
+
         fun getCurrentTimestamp(): Int {
             return currentTimestamp
         }
@@ -43,10 +47,15 @@ class Simulator() {
     ) {
         // initialize
         setMetrics(
-            MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams.map { it.update })
+            MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams)
         )
-        params.edges.forEach { it.setOnline(true) }
-        params.servers.forEach { it.setOnline(true) }
+        params.edges.forEach {
+            it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+        }
+        params.servers.forEach {
+            it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+        }
+
         processInitialUpdates(params.updatesParams)
 
         // main loop
@@ -67,7 +76,9 @@ class Simulator() {
     private fun processInitialUpdates(updates: List<InitialUpdateParams>) {
         updates.stream().forEach {
             val p = UpdatePackage(it.initialPosition, it.initialPosition, 1, it.update)
-            val initUpdateCallback = InitPackageAtNodeCallback(it.atInstant, p)
+            val initUpdateCallback = TimedCallback(it.atInstant) {
+                p.initialPosition.receive(p)
+            }
             callbacks.add(initUpdateCallback)
         }
     }

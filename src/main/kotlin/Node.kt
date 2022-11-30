@@ -1,20 +1,65 @@
 import java.util.LinkedList
 
-open class InitialNodeState(
-    var online: Boolean,
+open class MutableNodeState(
+    val online: Boolean,
 )
 
 open class NodeSimParams(
-    val capacity: Int, val nextOfflineTimestamp: ((current: Int) -> Int)? = null
+    val capacity: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
 )
+
+open class OnlineBehaviour(
+    initial: Boolean = false, private val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
+) {
+    private var online = initial
+    private var changeOnlineStateCallback: TimedCallback? = null
+
+    init {
+        changeOnlineStateCallback = createSetOnlineCallback()
+    }
+
+    open fun changeOnlineState(value: Boolean) {
+        println("change online state: $value")
+        online = value
+        if (changeOnlineStateCallback != null) {
+            Simulator.cancelCallback(changeOnlineStateCallback!!)
+        }
+        changeOnlineStateCallback = createSetOnlineCallback()
+    }
+
+    fun isOnline(): Boolean {
+        return online
+    }
+
+    private fun createSetOnlineCallback(): TimedCallback? {
+        val nextOnlineStateChange = nextOnlineStateChange
+        if (nextOnlineStateChange != null) {
+            val timestamp = nextOnlineStateChange(Simulator.getCurrentTimestamp(), isOnline())
+            if (timestamp != null) {
+                val callback = TimedCallback(timestamp) {
+                    if (isOnline()) {
+                        changeOnlineState(false)
+                    } else {
+                        changeOnlineState(true)
+                    }
+                }
+                Simulator.addCallback(callback)
+                return callback
+            }
+        }
+        return null
+    }
+}
 
 open class Node(
     // default initially online false, if set to true initially, edges need to be registered manually at their servers
-    private val simParams: NodeSimParams, initialNodeState: InitialNodeState = InitialNodeState(false)
-) {
-    private var online = initialNodeState.online
+    simParams: NodeSimParams, initialNodeState: MutableNodeState = MutableNodeState(false)
+) : OnlineBehaviour(initialNodeState.online, simParams.nextOnlineStateChange) {
     private val links: MutableList<UnidirectionalLink> = mutableListOf()
     private val packageQueue = LinkedList<Package>()
+
+    init {
+    }
 
     open fun receive(p: Package) {
         if (isOnline() && p.destination != this) {
@@ -22,19 +67,15 @@ open class Node(
         }
     }
 
-    // TODO: outsource availability functionality into interface (open class)
-    open fun setOnline(value: Boolean) {
-        online = value
+    open fun addLink(link: UnidirectionalLink) {
+        if (link.isOnline()) {
+            links.add(link)
+            link.setGetNextPackage { getNextPackage(it) }
+        }
     }
 
-    fun isOnline(): Boolean {
-        return online
-    }
-
-    fun addLink(link: UnidirectionalLink) {
-        links.add(link)
-        // TODO: see if this works
-        link.setGetNextPackage { getNextPackage(it) }
+    open fun removeLink(link: UnidirectionalLink) {
+        links.remove(link)
     }
 
     fun getLinks(): List<UnidirectionalLink> {
@@ -54,9 +95,12 @@ open class Node(
     }
 
     private fun getNextPackage(link: UnidirectionalLink): Package? {
-        packageQueue.forEach {
+        val queueCopy = packageQueue.toList()
+        queueCopy.forEach {
             val nextHop = findShortestPath(this, it.destination)?.firstOrNull()
-            if (nextHop == link.to) {
+            if (nextHop == null) {
+                packageQueue.remove(it)
+            } else if (nextHop == link.to) {
                 return it
             }
         }
@@ -72,6 +116,7 @@ open class Node(
     }
 }
 
+// TODO: eventuell jede data distribution strategy in eigener node-klasse
 data class UpdateRetrievalParams(
     // Push
     val registerAtServerForUpdates: Boolean = false,
@@ -82,10 +127,10 @@ data class UpdateRetrievalParams(
 abstract class UpdateReceiverNode(
     nodeSimParams: NodeSimParams,
     private val responsibleServers: List<Server>,
-    // TODO: either increase version of registerd nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
+    // TODO: either increase version of registered nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
-    initialNodeState: InitialNodeState
+    initialNodeState: MutableNodeState
 ) : Node(nodeSimParams, initialNodeState) {
     private var pullRequestSchedule: TimedCallback? = null
 
@@ -96,14 +141,23 @@ abstract class UpdateReceiverNode(
         }
     }
 
-    override fun setOnline(value: Boolean) {
+    override fun changeOnlineState(value: Boolean) {
         val onlineStatusChanged = value != isOnline();
-        super.setOnline(value)
+        super.changeOnlineState(value)
         if (onlineStatusChanged) {
             if (value) {
                 onConnected()
             } else {
                 onDisconnected()
+            }
+        }
+    }
+
+    override fun addLink(link: UnidirectionalLink) {
+        super.addLink(link)
+        if (link.isOnline()) {
+            if (link.to is Server) {
+                registerAtServer(link.to, listeningFor())
             }
         }
     }
@@ -119,8 +173,8 @@ abstract class UpdateReceiverNode(
 
     private fun onConnected() {
         if (isOnline()) {
-            registerAtServer(listeningFor())
-            initPullRequestSchedule()
+            registerAtServers(listeningFor())
+            makePullRequestsRecursive()
         } else {
             throw Exception("called onConnected but isOnline() returned false")
         }
@@ -138,35 +192,45 @@ abstract class UpdateReceiverNode(
         val targetSoftware = runningSoftware::find { it.type == update.type }
         if (targetSoftware != null) {
             targetSoftware.applyUpdate(update)
-            registerAtServer(listeningFor())
+            registerAtServers(listeningFor())
         }
 
     }
 
-    protected fun registerAtServer(listeningFor: List<SoftwareState>) {
+    protected fun registerAtServers(listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates) {
             responsibleServers.forEach {
-                val request = RegisterForUpdatesRequest(1, this, it, listeningFor)
-                val nextHop = findShortestPath(this, it)?.peek()
-                if (nextHop != null) {
-                    receive(request)
-                }
+                registerAtServer(it, listeningFor)
             }
         }
     }
 
-
-    private fun initPullRequestSchedule() {
-        if (updateRetrievalParams.sendUpdateRequestsInterval != null) {
-            Simulator.addCallback(RecursiveCallback(
-                Simulator.getCurrentTimestamp(), null, updateRetrievalParams.sendUpdateRequestsInterval
-            ) { sendPullRequestsToResponsibleServers() })
+    private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
+        if (updateRetrievalParams.registerAtServerForUpdates) {
+            val request = RegisterForUpdatesRequest(1, this, server, listeningFor)
+            val nextHop = findShortestPath(this, server)?.peek()
+            if (nextHop != null) {
+                receive(request)
+            }
         }
     }
 
     private fun removePullRequestSchedule() {
-        pullRequestSchedule?.cancelCallback()
+        if (pullRequestSchedule != null) {
+            Simulator.cancelCallback(pullRequestSchedule!!)
+        }
         pullRequestSchedule = null
+    }
+
+    private fun makePullRequestsRecursive() {
+        if (updateRetrievalParams.sendUpdateRequestsInterval != null) {
+            sendPullRequestsToResponsibleServers()
+            pullRequestSchedule =
+                TimedCallback(Simulator.getCurrentTimestamp() + updateRetrievalParams.sendUpdateRequestsInterval) {
+                    makePullRequestsRecursive()
+                }
+            Simulator.addCallback(pullRequestSchedule!!)
+        }
     }
 
     private fun sendPullRequestsToResponsibleServers() {
@@ -182,7 +246,7 @@ abstract class UpdateReceiverNode(
 
 class InitialServerState(
     online: Boolean, val receivers: List<UpdateReceiverNode>? = null, val updates: List<SoftwareUpdate>? = null
-) : InitialNodeState(online)
+) : MutableNodeState(online)
 
 open class Server(
     nodeSimParams: NodeSimParams,
@@ -191,7 +255,9 @@ open class Server(
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialServerState: InitialServerState
-) : UpdateReceiverNode(nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState) {
+) : UpdateReceiverNode(
+    nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
+) {
     private var receiverRegistry = initialServerState.receivers?.associate { it to it.listeningFor() }?.toMutableMap()
     private var updateRegistry = initialServerState.updates?.associate { it.type to mutableListOf(it) }?.toMutableMap()
 
@@ -226,6 +292,23 @@ open class Server(
             }
         }
         return oneValueForEachType
+    }
+
+    override fun addLink(link: UnidirectionalLink) {
+        super.addLink(link)
+        if (link.isOnline()) {
+            if (link.to is UpdateReceiverNode) {
+                val receiverRegistryEntry = receiverRegistry?.get(link.to)
+                if (receiverRegistryEntry != null) {
+                    initUpdatePackageAndPassToLink(link.to, receiverRegistryEntry)
+                }
+            }
+        }
+    }
+
+    override fun removeLink(link: UnidirectionalLink) {
+        super.removeLink(link)
+        receiverRegistry?.remove(link.to)
     }
 
     private fun processRequest(request: UpdateRequest) {
@@ -297,7 +380,7 @@ open class Server(
         if (listeningFor != null) {
             receiverRegistry?.set(node, listeningFor.toMutableList())
             initUpdatePackageAndPassToLink(node, listeningFor)
-            registerAtServer(listeningFor())
+            registerAtServers(listeningFor())
         } else {
             receiverRegistry?.set(node, mutableListOf())
         }
@@ -309,7 +392,7 @@ class Edge(
     responsibleUpdateServer: List<Server>,
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    initialNodeState: InitialNodeState
+    initialNodeState: MutableNodeState
 ) : UpdateReceiverNode(
     nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState
 ) {}

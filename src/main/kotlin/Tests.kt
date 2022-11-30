@@ -1,3 +1,11 @@
+fun dummyNextOnlineStateChange(timestamp: Int, online: Boolean): Int? {
+    return if (!online) 100 else null
+}
+
+fun dummyNextOnlineStateChange2(timestamp: Int, online: Boolean): Int? {
+    return timestamp + 30
+}
+
 fun createSimpleTestPush(): Simulator.SimulationParams {
     val software = Software("software")
     val serverNode = Server(
@@ -12,13 +20,13 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
-        InitialNodeState(false)
+        MutableNodeState(false)
     )
-    UnidirectionalLink(serverNode, edgeNode)
-    UnidirectionalLink(edgeNode, serverNode)
+    UnidirectionalLink(serverNode, edgeNode, LinkSimParams(0, ::dummyNextOnlineStateChange), InitialLinkState(false))
+    UnidirectionalLink(edgeNode, serverNode, LinkSimParams(0, ::dummyNextOnlineStateChange), InitialLinkState(false))
 
 
-    val update = SoftwareUpdate(software, 1, 1, 0) { oldSize -> oldSize + 1 }
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode)
     val servers = listOf(serverNode)
@@ -41,29 +49,29 @@ fun createSimpleTest4(): Simulator.SimulationParams {
         InitialServerState(false, null, null)
     )
     val edgeNode = Edge(
-        NodeSimParams(10),
+        NodeSimParams(10) { current, online -> current + 30 },
         listOf(serverNode2),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
-        InitialNodeState(false)
+        MutableNodeState(false)
     )
     val edgeNode2 = Edge(
-        NodeSimParams(10),
+        NodeSimParams(10) { current, online -> current + 30 },
         listOf(serverNode2),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
-        InitialNodeState(false)
+        MutableNodeState(false)
     )
-    UnidirectionalLink(serverNode, serverNode2)
-    UnidirectionalLink(serverNode2, serverNode)
-    UnidirectionalLink(serverNode2, edgeNode)
-    UnidirectionalLink(edgeNode, serverNode2)
-    UnidirectionalLink(serverNode2, edgeNode2)
-    UnidirectionalLink(edgeNode2, serverNode2)
+    UnidirectionalLink(serverNode, serverNode2, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(serverNode2, serverNode, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(serverNode2, edgeNode, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(edgeNode, serverNode2, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(serverNode2, edgeNode2, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(edgeNode2, serverNode2, LinkSimParams(0), InitialLinkState(true))
 
 
-    val update = SoftwareUpdate(software, 1, 1, 100) { oldSize -> oldSize + 1 }
-    val update2 = SoftwareUpdate(software, 2, 1, 200) { oldSize -> oldSize + 1 }
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+    val update2 = SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode, edgeNode2)
     val servers = listOf(serverNode, serverNode2)
@@ -88,14 +96,18 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(false, 60),
-        InitialNodeState(false)
+        MutableNodeState(false)
     )
-    UnidirectionalLink(serverNode, edgeNode)
-    UnidirectionalLink(edgeNode, serverNode)
+    UnidirectionalLink(
+        serverNode, edgeNode, LinkSimParams(0) { _, online -> if (!online) 100 else null }, InitialLinkState(false)
+    )
+    UnidirectionalLink(
+        edgeNode, serverNode, LinkSimParams(0) { _, online -> if (!online) 100 else null }, InitialLinkState(false)
+    )
 
 
-    val update = SoftwareUpdate(software, 1, 1, 0) { oldSize -> oldSize + 1 }
-    val update2 = SoftwareUpdate(software, 2, 1, 20) { oldSize -> oldSize + 1 }
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+    val update2 = SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode)
     val servers = listOf(serverNode)

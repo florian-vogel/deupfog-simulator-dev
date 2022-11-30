@@ -1,9 +1,11 @@
 import java.util.*
 
 class MetricsCollector(
-    val name: String, edges: List<Edge>, servers: List<Server>, updates: List<SoftwareUpdate>
+    val name: String, edges: List<Edge>, servers: List<Server>, updates: List<Simulator.InitialUpdateParams>
 ) {
     val updateMetricsCollector = UpdateMetricsCollector(edges, servers, updates)
+    // package metrics collector -> focus on lost packages (eg. queue full or edge offline)
+    // simulation performace metrics
     // val requestMetricsCollector
     // TODO: val linkMetricsCollector
 
@@ -13,7 +15,9 @@ class MetricsCollector(
 }
 
 class UpdateMetricsCollector(
-    private val edges: List<Edge>, private val servers: List<Server>, updates: List<SoftwareUpdate>
+    private val edges: List<Edge>,
+    private val servers: List<Server>,
+    initialUpdateParams: List<Simulator.InitialUpdateParams>
 ) {
     data class UpdateMetricsOutput(
         val initializedAt: Int,
@@ -28,7 +32,7 @@ class UpdateMetricsCollector(
         var arrivedAtAllEdgesAt: Int? = null
     }
 
-    private val updateMetrics = updates.associateWith { UpdateMetricsOutput(it.initializeTimestamp) };
+    private val updateMetrics = initialUpdateParams.associate { it.update to UpdateMetricsOutput(it.atInstant) };
 
     fun onArrive(update: SoftwareUpdate, node: Node) {
         if (node is Edge) {

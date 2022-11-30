@@ -23,6 +23,5 @@ class SoftwareUpdate(
     val type: Software,
     val updatesToVersion: Int,
     val size: Int,
-    val initializeTimestamp: Int,
     val newSoftwareSize: (oldSize: Int) -> Int,
 )
