@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.*
 
 class MetricsCollector(
@@ -9,12 +10,14 @@ class MetricsCollector(
     // val requestMetricsCollector
     // TODO: val linkMetricsCollector
 
-    fun printMetrics() {
+    fun printAndGetGraph() {
         this.updateMetricsCollector.print()
+        val asCsv = this.updateMetricsCollector.writeToCSV()
     }
 }
 
 class UpdateMetricsCollector(
+    // edge should be instead UpdateReceiverNode
     private val edges: List<Edge>,
     private val servers: List<Server>,
     initialUpdateParams: List<Simulator.InitialUpdateParams>
@@ -86,4 +89,60 @@ class UpdateMetricsCollector(
             println("    arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline}")
         }
     }
+
+    class TimestampServerCount(private val timestamp: Int, private val count: Int) : CsvWritable {
+
+        override fun toCsv(): List<CsvWritableObject> {
+            return listOf(
+                CsvWritableObject("timestamp", timestamp.toString()),
+                CsvWritableObject("count", count.toString())
+            )
+        }
+    }
+
+    fun writeToCSV() {
+        updateMetrics.forEach() {
+            val arrivedAtServerTimeline = ArrayList(it.value.arrivedAtServerTimeline)
+            val title = "./analysis/stats-out/${it.key}/AvailabilityOverTime/arrivedAtServerTimeline.csv"
+            var counter = 0
+            val toObj = arrivedAtServerTimeline.map { pair -> counter++; TimestampServerCount(pair.first, counter) }
+            writeCsv(toObj, title, true)
+        }
+    }
+}
+
+data class CsvWritableObject(
+    val columnName: String,
+    val valueAsString: String
+)
+
+interface CsvWritable {
+    fun toCsv(): List<CsvWritableObject>
+}
+
+fun <T : CsvWritable> writeCsv(data: List<T>, filePath: String, deleteIfExists: Boolean = false) {
+    val file = File(filePath)
+    if (deleteIfExists) {
+        // TODO
+        file.parentFile.delete()
+    }
+    file.parentFile.mkdirs()
+
+    val out = file.outputStream().bufferedWriter()
+
+    val obj1 = data[0]
+    val header = obj1.toCsv().joinToString(",") { it.columnName }
+
+    out.write(header)
+    out.write("\n")
+
+
+    data.forEach { obj ->
+        val objAsCsv = obj.toCsv()
+        val accumulatedString = objAsCsv.joinToString(",") { it.valueAsString }
+        out.write(accumulatedString)
+        out.write("\n")
+    }
+
+    out.close()
 }

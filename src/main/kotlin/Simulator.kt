@@ -70,7 +70,7 @@ class Simulator() {
         }
 
         // cleanup
-        metrics?.printMetrics()
+        metrics?.printAndGetGraph()
     }
 
     private fun processInitialUpdates(updates: List<InitialUpdateParams>) {
