@@ -101,14 +101,20 @@ class UpdateMetricsCollector(
     }
 
     fun writeToCSV() {
+        writeArrivedAtServerTimelineToCSV()
+    }
+
+    private fun writeArrivedAtServerTimelineToCSV() {
         updateMetrics.forEach() {
             val arrivedAtServerTimeline = ArrayList(it.value.arrivedAtServerTimeline)
-            val title = "./analysis/stats-out/${it.key}/AvailabilityOverTime/arrivedAtServerTimeline.csv"
+            val title = "./analysis/stats-out/updates/${it.key}/AvailabilityOverTime/arrivedAtServerTimeline.csv"
             var counter = 0
             val toObj = arrivedAtServerTimeline.map { pair -> counter++; TimestampServerCount(pair.first, counter) }
             writeCsv(toObj, title, true)
         }
     }
+
+    // TODO: weitere ergänzen
 }
 
 data class CsvWritableObject(

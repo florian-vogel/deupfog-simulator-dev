@@ -2,17 +2,17 @@
 // or just as two unidirectional links -> maybe should be both possible -> more generic link interface
 // especially how bandwith is consumed should be generic (e.g. seperate bandwiths for each direction or together one)
 
-data class InitialLinkState(
+data class MutableLinkState(
     val isOnline: Boolean
 )
 
 data class LinkSimParams(
-    val bandwidth: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
+    val bandwidth: Int, val latency: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
 )
 
 // an sich wird isOnline nicht mehr benötigt, denn links entfernen sich selbst vom node, wenn sie offline gehen
 class UnidirectionalLink(
-    private val from: Node, val to: Node, simParams: LinkSimParams, initialLinkState: InitialLinkState
+    private val from: Node, val to: Node, simParams: LinkSimParams, initialLinkState: MutableLinkState
 ) : OnlineBehaviour(initialLinkState.isOnline, simParams.nextOnlineStateChange) {
     private var getNextPackage: (UnidirectionalLink) -> Package? = { _ -> null }
     private var currentTransmission: Transmission? = null

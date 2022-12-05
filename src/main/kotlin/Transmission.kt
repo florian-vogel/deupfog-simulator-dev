@@ -8,6 +8,7 @@ interface Transmission {
     fun cancelTransmitting()
 }
 
+// TODO: calculate transmission time here
 class SimpleTransmission(
     override val p: Package, override val transmissionTime: Int, override val via: UnidirectionalLink
 ) : Transmission {

@@ -5,51 +5,10 @@ open class MutableNodeState(
 )
 
 open class NodeSimParams(
-    val capacity: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
+    val capacity: Int,
+    val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
+    // val calculateProcessingTime: ((p: Package) -> Int)? = null
 )
-
-open class OnlineBehaviour(
-    initial: Boolean = false, private val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
-) {
-    private var online = initial
-    private var changeOnlineStateCallback: TimedCallback? = null
-
-    init {
-        changeOnlineStateCallback = createSetOnlineCallback()
-    }
-
-    open fun changeOnlineState(value: Boolean) {
-        println("change online state: $value")
-        online = value
-        if (changeOnlineStateCallback != null) {
-            Simulator.cancelCallback(changeOnlineStateCallback!!)
-        }
-        changeOnlineStateCallback = createSetOnlineCallback()
-    }
-
-    fun isOnline(): Boolean {
-        return online
-    }
-
-    private fun createSetOnlineCallback(): TimedCallback? {
-        val nextOnlineStateChange = nextOnlineStateChange
-        if (nextOnlineStateChange != null) {
-            val timestamp = nextOnlineStateChange(Simulator.getCurrentTimestamp(), isOnline())
-            if (timestamp != null) {
-                val callback = TimedCallback(timestamp) {
-                    if (isOnline()) {
-                        changeOnlineState(false)
-                    } else {
-                        changeOnlineState(true)
-                    }
-                }
-                Simulator.addCallback(callback)
-                return callback
-            }
-        }
-        return null
-    }
-}
 
 open class Node(
     // default initially online false, if set to true initially, edges need to be registered manually at their servers
@@ -111,7 +70,7 @@ open class Node(
         this.packageQueue.add(p)
         val nextHop = findShortestPath(this, p.destination)?.firstOrNull()
         if (nextHop != null) {
-            getLinkTo(nextHop)?.tryTransmission(p)
+            links.find { it.to == nextHop }?.tryTransmission(p)
         }
     }
 }
@@ -127,7 +86,8 @@ data class UpdateRetrievalParams(
 abstract class UpdateReceiverNode(
     nodeSimParams: NodeSimParams,
     private val responsibleServers: List<Server>,
-    // TODO: either increase version of registered nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
+    // either increase version of registered nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
+    // --> currently sending update received notification
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState

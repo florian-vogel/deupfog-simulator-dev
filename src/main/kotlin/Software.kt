@@ -9,7 +9,6 @@ class Software(val name: String) {
     }
 }
 
-// TODO: rename to smt like software state
 class SoftwareState(val type: Software, var versionNumber: Int, var size: Int) {
     fun applyUpdate(update: SoftwareUpdate) {
         if (type.updateCompatible(versionNumber, update.updatesToVersion)) {

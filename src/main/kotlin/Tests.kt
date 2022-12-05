@@ -22,8 +22,8 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
         UpdateRetrievalParams(true),
         MutableNodeState(false)
     )
-    UnidirectionalLink(serverNode, edgeNode, LinkSimParams(0, ::dummyNextOnlineStateChange), InitialLinkState(false))
-    UnidirectionalLink(edgeNode, serverNode, LinkSimParams(0, ::dummyNextOnlineStateChange), InitialLinkState(false))
+    UnidirectionalLink(serverNode, edgeNode, LinkSimParams(0, 0, ::dummyNextOnlineStateChange), MutableLinkState(false))
+    UnidirectionalLink(edgeNode, serverNode, LinkSimParams(0, 0, ::dummyNextOnlineStateChange), MutableLinkState(false))
 
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
@@ -62,12 +62,12 @@ fun createSimpleTest4(): Simulator.SimulationParams {
         UpdateRetrievalParams(true),
         MutableNodeState(false)
     )
-    UnidirectionalLink(serverNode, serverNode2, LinkSimParams(0), InitialLinkState(true))
-    UnidirectionalLink(serverNode2, serverNode, LinkSimParams(0), InitialLinkState(true))
-    UnidirectionalLink(serverNode2, edgeNode, LinkSimParams(0), InitialLinkState(true))
-    UnidirectionalLink(edgeNode, serverNode2, LinkSimParams(0), InitialLinkState(true))
-    UnidirectionalLink(serverNode2, edgeNode2, LinkSimParams(0), InitialLinkState(true))
-    UnidirectionalLink(edgeNode2, serverNode2, LinkSimParams(0), InitialLinkState(true))
+    UnidirectionalLink(serverNode, serverNode2, LinkSimParams(0, 0), MutableLinkState(true))
+    UnidirectionalLink(serverNode2, serverNode, LinkSimParams(0, 0), MutableLinkState(true))
+    UnidirectionalLink(serverNode2, edgeNode, LinkSimParams(0, 0), MutableLinkState(true))
+    UnidirectionalLink(edgeNode, serverNode2, LinkSimParams(0, 0), MutableLinkState(true))
+    UnidirectionalLink(serverNode2, edgeNode2, LinkSimParams(0, 0), MutableLinkState(true))
+    UnidirectionalLink(edgeNode2, serverNode2, LinkSimParams(0, 0), MutableLinkState(true))
 
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
@@ -81,6 +81,7 @@ fun createSimpleTest4(): Simulator.SimulationParams {
 
     return Simulator.SimulationParams(edges, servers, updates)
 }
+
 
 fun createSimpleTestPull(): Simulator.SimulationParams {
     val software = Software("software")
@@ -99,10 +100,10 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
         MutableNodeState(false)
     )
     UnidirectionalLink(
-        serverNode, edgeNode, LinkSimParams(0) { _, online -> if (!online) 100 else null }, InitialLinkState(false)
+        serverNode, edgeNode, LinkSimParams(0, 0) { _, online -> if (!online) 100 else null }, MutableLinkState(false)
     )
     UnidirectionalLink(
-        edgeNode, serverNode, LinkSimParams(0) { _, online -> if (!online) 100 else null }, InitialLinkState(false)
+        edgeNode, serverNode, LinkSimParams(0, 0) { _, online -> if (!online) 100 else null }, MutableLinkState(false)
     )
 
 
