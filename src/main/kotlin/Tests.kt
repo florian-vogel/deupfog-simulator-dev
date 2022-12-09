@@ -118,3 +118,15 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
 
     return Simulator.SimulationParams(edges, servers, updates)
 }
+
+fun testScenario01(): Simulator.SimulationParams {
+    return null as Simulator.SimulationParams
+}
+
+fun generateServerHierarchy(levels: Int, serverDegree: Int, edgesPerServer: Int): List<Server> {
+    return null as List<Server>;
+}
+
+fun initializeNodes(nodes: List<Node>) {
+    // TODO: pass softwareStates of edges to server
+}

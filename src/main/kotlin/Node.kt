@@ -333,13 +333,16 @@ open class Server(
     private fun registerNodeInLocalRegistry(
         node: UpdateReceiverNode, listeningFor: List<SoftwareState>?
     ) {
+        //
         if (receiverRegistry == null) {
             receiverRegistry = mutableMapOf()
         }
 
         if (listeningFor != null) {
             receiverRegistry?.set(node, listeningFor.toMutableList())
+            // TODO: only send those which the server has
             initUpdatePackageAndPassToLink(node, listeningFor)
+            // TODO: register only for those which server wasn't listening before
             registerAtServers(listeningFor())
         } else {
             receiverRegistry?.set(node, mutableListOf())

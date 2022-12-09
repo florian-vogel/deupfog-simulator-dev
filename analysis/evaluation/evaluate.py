@@ -1,17 +1,29 @@
 import seaborn
 import pandas
 import matplotlib.pyplot as plt
+import os
+
+sim_name = 'Simulation01'
 
 
 def main():
-    generate_scatterplot(r'../stats-out/SoftwareUpdate@443b7951/AvailabilityOverTime/arrivedAtServerTimeline.csv')
+    update_metrics()
 
 
-def generate_scatterplot(path):
-    csv = pandas.read_csv(path)
-    res = seaborn.scatterplot(x="timestamp", y="count", data=csv)
+def update_metrics():
+    path = r'../stats-out/Simulation01/updateMetrics/'
+    update_paths = os.listdir(path)
+    for update_path in update_paths:
+        result_paths = os.listdir(path + update_path + '/')
+        for csv_path in result_paths:
+            csv = pandas.read_csv(path + '/' + update_path + '/' + csv_path)
+            generate_scatter_plot(csv, update_path + csv_path + '.png')
+
+
+def generate_scatter_plot(csv, result_fig_name):
+    seaborn.scatterplot(x="timestamp", y="count", data=csv)
+    plt.savefig('./' + result_fig_name)
     plt.show()
-    plt.savefig('./figures/fig_01')
 
 
 if __name__ == "__main__":

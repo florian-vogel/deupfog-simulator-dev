@@ -1,6 +1,10 @@
 import java.io.File
 import java.util.*
 
+interface Metrics {
+    fun writeToCsv()
+}
+
 class MetricsCollector(
     val name: String, edges: List<Edge>, servers: List<Server>, updates: List<Simulator.InitialUpdateParams>
 ) {
@@ -12,7 +16,7 @@ class MetricsCollector(
 
     fun printAndGetGraph() {
         this.updateMetricsCollector.print()
-        val asCsv = this.updateMetricsCollector.writeToCSV()
+        val asCsv = this.updateMetricsCollector.writeToCsv()
     }
 }
 
@@ -21,7 +25,7 @@ class UpdateMetricsCollector(
     private val edges: List<Edge>,
     private val servers: List<Server>,
     initialUpdateParams: List<Simulator.InitialUpdateParams>
-) {
+) : Metrics {
     data class UpdateMetricsOutput(
         val initializedAt: Int,
     ) {
@@ -48,7 +52,7 @@ class UpdateMetricsCollector(
     // TODO: one method that is called by the Node superclass, then work with type cases
     private fun onArriveAtEdge(update: SoftwareUpdate, edge: Edge) {
         if (updateArrivedAtAllEdges(update)) {
-            updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
+            // updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
         } else {
             updateMetrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
             if (updateArrivedAtAllEdges(update)) {
@@ -59,7 +63,7 @@ class UpdateMetricsCollector(
 
     private fun onArriveAtServer(update: SoftwareUpdate, server: Server) {
         if (updateArrivedAtAllServers(update)) {
-            updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
+            // updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
         } else {
             updateMetrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
             if (updateArrivedAtAllServers(update)) {
@@ -90,27 +94,39 @@ class UpdateMetricsCollector(
         }
     }
 
-    class TimestampServerCount(private val timestamp: Int, private val count: Int) : CsvWritable {
+    class TimestampToCount(private val timestamp: Int, private val count: Int) : CsvWritable {
 
         override fun toCsv(): List<CsvWritableObject> {
             return listOf(
-                CsvWritableObject("timestamp", timestamp.toString()),
-                CsvWritableObject("count", count.toString())
+                CsvWritableObject("timestamp", timestamp.toString()), CsvWritableObject("count", count.toString())
             )
         }
     }
 
-    fun writeToCSV() {
+    override fun writeToCsv() {
         writeArrivedAtServerTimelineToCSV()
+        writeArrivedAtEdgeTimelineToCSV()
     }
 
     private fun writeArrivedAtServerTimelineToCSV() {
         updateMetrics.forEach() {
             val arrivedAtServerTimeline = ArrayList(it.value.arrivedAtServerTimeline)
-            val title = "./analysis/stats-out/updates/${it.key}/AvailabilityOverTime/arrivedAtServerTimeline.csv"
+            val simulationName = Simulator.simulationName
+            val path = "./analysis/stats-out/${simulationName}/updateMetrics/${it.key}/arrivedAtServerTimeline.csv"
             var counter = 0
-            val toObj = arrivedAtServerTimeline.map { pair -> counter++; TimestampServerCount(pair.first, counter) }
-            writeCsv(toObj, title, true)
+            val toObj = arrivedAtServerTimeline.map { pair -> counter++; TimestampToCount(pair.first, counter) }
+            writeCsv(toObj, path, true)
+        }
+    }
+
+    private fun writeArrivedAtEdgeTimelineToCSV() {
+        updateMetrics.forEach() {
+            val arrivedAtEdgeTimeline = ArrayList(it.value.arrivedAtEdgeTimeline)
+            val simulationName = Simulator.simulationName
+            val path = "./analysis/stats-out/${simulationName}/updateMetrics/${it.key}/arrivedAtEdgeTimeline.csv"
+            var counter = 0
+            val toObj = arrivedAtEdgeTimeline.map { pair -> counter++; TimestampToCount(pair.first, counter) }
+            writeCsv(toObj, path, true)
         }
     }
 
@@ -118,8 +134,7 @@ class UpdateMetricsCollector(
 }
 
 data class CsvWritableObject(
-    val columnName: String,
-    val valueAsString: String
+    val columnName: String, val valueAsString: String
 )
 
 interface CsvWritable {

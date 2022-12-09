@@ -7,6 +7,7 @@ class Simulator() {
             c1.atInstant.compareTo(c2.atInstant)
         }
         var metrics: MetricsCollector? = null
+        val simulationName = "Simulation01"
 
         fun addCallback(c: TimedCallback) {
             this.callbacks.add(c)
@@ -41,19 +42,27 @@ class Simulator() {
         val edges: List<Edge>, val servers: List<Server>, val updatesParams: List<InitialUpdateParams>
     )
 
+    data class SimConfigParams(
+        val nodesStartOnline: Boolean = true,
+    )
+
     fun runSimulation(
         // since I specify all network parameters here the topology is static as well as the update schedule
-        params: SimulationParams
+        params: SimulationParams,
+        simConfigParams: SimConfigParams
     ) {
         // initialize
         setMetrics(
             MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams)
         )
-        params.edges.forEach {
-            it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
-        }
-        params.servers.forEach {
-            it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+
+        if (simConfigParams.nodesStartOnline) {
+            params.edges.forEach {
+                it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+            }
+            params.servers.forEach {
+                it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+            }
         }
 
         processInitialUpdates(params.updatesParams)
