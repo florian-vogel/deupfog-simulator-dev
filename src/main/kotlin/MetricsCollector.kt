@@ -6,9 +6,15 @@ interface Metrics {
 }
 
 class MetricsCollector(
-    val name: String, edges: List<Edge>, servers: List<Server>, updates: List<Simulator.InitialUpdateParams>
+    val name: String,
+    edges: List<Edge>,
+    servers: List<Server>,
+    links: List<UnidirectionalLink>,
+    updates: List<Simulator.InitialUpdateParams>
 ) {
     val updateMetricsCollector = UpdateMetricsCollector(edges, servers, updates)
+    val linkMetricsCollector = LinkMetricsCollector(links)
+    val nodeMetricsCollector = NodeMetricsCollector(edges + servers)
     // package metrics collector -> focus on lost packages (eg. queue full or edge offline)
     // simulation performace metrics
     // val requestMetricsCollector
@@ -121,6 +127,7 @@ class UpdateMetricsCollector(
 
     private fun writeArrivedAtEdgeTimelineToCSV() {
         updateMetrics.forEach() {
+            // TODO: arrayList kann wahrscheinlich weg
             val arrivedAtEdgeTimeline = ArrayList(it.value.arrivedAtEdgeTimeline)
             val simulationName = Simulator.simulationName
             val path = "./analysis/stats-out/${simulationName}/updateMetrics/${it.key}/arrivedAtEdgeTimeline.csv"
@@ -131,6 +138,124 @@ class UpdateMetricsCollector(
     }
 
     // TODO: weitere ergänzen
+}
+
+class LinkMetricsCollector(val links: List<UnidirectionalLink>) : Metrics {
+    enum class LinkState {
+        FREE, OCCUPIED, OFFLINE
+    }
+
+    data class LinkMetricsOutput(
+        val linkStateTimeline: PriorityQueue<Pair<Int, LinkState>> = PriorityQueue { c1, c2 ->
+            c1.first.compareTo(c2.first)
+        }
+    )
+
+    private val linkMetrics = links.associateWith { LinkMetricsOutput() };
+
+
+    class LinkStateMonitor(
+        private val timestamp: Int,
+        private val linksFree: Int,
+        private val linksOccupied: Int,
+        private val linksOffline: Int
+    ) : CsvWritable {
+
+        override fun toCsv(): List<CsvWritableObject> {
+            return listOf(
+                CsvWritableObject("timestamp", timestamp.toString()),
+                CsvWritableObject("linksFree", linksFree.toString()),
+                CsvWritableObject("linksOccupied", linksOccupied.toString()),
+                CsvWritableObject("linksOffline", linksOffline.toString()),
+            )
+        }
+    }
+
+    private val linkStateMonitorTimeline = mutableListOf(
+        LinkStateMonitor(0, links.count {
+            it.isOnline() && it.hasUnusedBandwidth()
+        }, links.count {
+            it.isOnline() && !it.hasUnusedBandwidth()
+        }, links.count {
+            !it.isOnline()
+        })
+    )
+
+
+    fun onChangedLinkState(link: UnidirectionalLink) {
+        val lastLinkState = linkMetrics[link]?.linkStateTimeline?.peek()?.second
+        var newLinkState: LinkState?
+        if (link.isOnline() && link.hasUnusedBandwidth()) {
+            newLinkState = LinkState.FREE
+        } else if (link.isOnline() && !link.hasUnusedBandwidth()) {
+            newLinkState = LinkState.OCCUPIED
+        } else {
+            newLinkState = LinkState.OFFLINE
+        }
+        if (lastLinkState === null || lastLinkState !== newLinkState) {
+            linkMetrics[link]?.linkStateTimeline?.add(Pair(Simulator.getCurrentTimestamp(), newLinkState))
+
+            val newLinkStateMonitor = LinkStateMonitor(0, links.count {
+                it.isOnline() && it.hasUnusedBandwidth()
+            }, links.count {
+                it.isOnline() && !it.hasUnusedBandwidth()
+            }, links.count {
+                !it.isOnline()
+            })
+
+            // TODO: optimise efficiency
+            linkStateMonitorTimeline.add(
+                newLinkStateMonitor
+            )
+        }
+
+    }
+
+    override fun writeToCsv() {
+        writeLinkStateMonitorTimelineToCsv()
+    }
+
+    private fun writeLinkStateMonitorTimelineToCsv() {
+        val path = "./analysis/stats-out/${Simulator.simulationName}/linkStateMonitor/linkStateMonitorTimeline.csv"
+        writeCsv(linkStateMonitorTimeline, path, true)
+    }
+}
+
+class NodeMetricsCollector(nodes: List<Node>) : Metrics {
+
+    data class NodeMetricsOutput(
+        val packagesInQueueTimeline: PriorityQueue<PackageLostTimestamp> = PriorityQueue { c1, c2 ->
+            c1.timestamp.compareTo(c2.timestamp)
+        }
+    )
+
+    private val nodeMetrics = nodes.associateWith { NodeMetricsOutput() };
+
+
+    fun onPackageLost(node: Node) {
+        if (nodeMetrics[node] !== null) {
+            nodeMetrics[node]!!.packagesInQueueTimeline.add(PackageLostTimestamp(Simulator.getCurrentTimestamp()))
+        }
+    }
+
+    override fun writeToCsv() {
+        writePackageLostTimelineToCsv()
+    }
+
+    class PackageLostTimestamp(val timestamp: Int) : CsvWritable {
+        override fun toCsv(): List<CsvWritableObject> {
+            return listOf(
+                CsvWritableObject("timestamp", timestamp.toString())
+            )
+        }
+    }
+
+    private fun writePackageLostTimelineToCsv() {
+        nodeMetrics.forEach() {
+            val path = "./analysis/stats-out/${Simulator.simulationName}/nodeMetrics/${it.key}/packageLostTimeline.csv"
+            writeCsv(it.value.packagesInQueueTimeline.toList(), path, true)
+        }
+    }
 }
 
 data class CsvWritableObject(

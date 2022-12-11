@@ -23,10 +23,10 @@ class SimpleTransmission(
 
     override fun completeTransmitting() {
         via.to.receive(p)
-        via.transmissionFinished()
+        via.onTransmissionFinished()
     }
 
     override fun cancelTransmitting() {
-        via.transmissionFinished()
+        via.onTransmissionFinished()
     }
 }

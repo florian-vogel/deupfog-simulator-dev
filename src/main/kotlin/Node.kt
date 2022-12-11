@@ -59,6 +59,7 @@ open class Node(
             val nextHop = findShortestPath(this, it.destination)?.firstOrNull()
             if (nextHop == null) {
                 packageQueue.remove(it)
+                Simulator.metrics!!.nodeMetricsCollector.onPackageLost(this)
             } else if (nextHop == link.to) {
                 return it
             }
