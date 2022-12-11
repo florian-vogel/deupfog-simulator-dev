@@ -20,6 +20,11 @@ open class Node(
     init {
     }
 
+    override fun changeOnlineState(value: Boolean) {
+        super.changeOnlineState(value)
+        Simulator.metrics!!.nodeMetricsCollector.onNodeStateChanged(this)
+    }
+
     open fun receive(p: Package) {
         if (isOnline() && p.destination != this) {
             lineUpPackage(p)
@@ -84,6 +89,7 @@ data class UpdateRetrievalParams(
     val sendUpdateRequestsInterval: Int? = null
 )
 
+// TODO: In Push und Pull node trennen, update retrival params entfernen
 abstract class UpdateReceiverNode(
     nodeSimParams: NodeSimParams,
     private val responsibleServers: List<Server>,
