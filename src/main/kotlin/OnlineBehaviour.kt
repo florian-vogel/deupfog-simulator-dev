@@ -12,7 +12,6 @@ open class OnlineBehaviour(
     }
 
     open fun changeOnlineState(value: Boolean) {
-        println("change online state: $value time: " + Simulator.getCurrentTimestamp())
         online = value
         if (changeOnlineStateCallback != null) {
             Simulator.cancelCallback(changeOnlineStateCallback!!)

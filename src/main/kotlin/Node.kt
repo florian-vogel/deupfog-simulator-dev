@@ -173,7 +173,7 @@ abstract class UpdateReceiverNode(
     }
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
-        if (updateRetrievalParams.registerAtServerForUpdates) {
+        if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
             val request = RegisterForUpdatesRequest(1, this, server, listeningFor)
             val nextHop = findShortestPath(this, server)?.peek()
             if (nextHop != null) {

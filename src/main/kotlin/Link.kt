@@ -44,6 +44,7 @@ class UnidirectionalLink(
             currentTransmission = null
             sendNext()
         }
+        Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
     }
 
     fun transmissionCanceled() {
@@ -58,6 +59,7 @@ class UnidirectionalLink(
             // TODO: calculate transmission time
             currentTransmission = SimpleTransmission(nextPackage, 10, this)
         }
+        Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
     }
 
     fun hasUnusedBandwidth(): Boolean {

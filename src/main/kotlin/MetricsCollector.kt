@@ -139,7 +139,7 @@ class UpdateMetricsCollector(
     // TODO: weitere ergänzen
 }
 
-class LinkMetricsCollector(val links: List<UnidirectionalLink>) : Metrics {
+class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metrics {
     enum class LinkState {
         FREE, OCCUPIED, OFFLINE
     }
