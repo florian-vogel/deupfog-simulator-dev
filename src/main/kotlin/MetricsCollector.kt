@@ -154,10 +154,7 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
 
 
     class LinkStateMonitor(
-        private val timestamp: Int,
-        private val linksFree: Int,
-        private val linksOccupied: Int,
-        private val linksOffline: Int
+        val timestamp: Int, val linksFree: Int, val linksOccupied: Int, val linksOffline: Int
     ) : CsvWritable {
 
         override fun toCsv(): List<CsvWritableObject> {
@@ -201,6 +198,19 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
                 !it.isOnline()
             })
 
+            linkStateMonitorTimeline.removeIf { it.timestamp == newLinkStateMonitor.timestamp }
+
+            val lastElement = linkStateMonitorTimeline.lastOrNull()
+            if (lastElement != null) {
+                val copyLast = LinkStateMonitor(
+                    Simulator.getCurrentTimestamp(),
+                    lastElement.linksFree,
+                    lastElement.linksOccupied,
+                    lastElement.linksOffline
+                )
+                linkStateMonitorTimeline.add(copyLast)
+            }
+
             // TODO: optimise efficiency
             linkStateMonitorTimeline.add(
                 newLinkStateMonitor
@@ -234,7 +244,7 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
     }
 
     class NodeStateMonitor(
-        private val timestamp: Int,
+        val timestamp: Int,
         private val nodesOnline: Int,
         private val nodesOffline: Int,
     ) : CsvWritable {
@@ -280,6 +290,10 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
             }, nodes.count {
                 !it.isOnline()
             })
+
+            if (nodeStateMonitorTimeline.last().timestamp == newNodeStateMonitor.timestamp) {
+                nodeStateMonitorTimeline.removeLastOrNull()
+            }
 
             // TODO: optimise efficiency
             nodeStateMonitorTimeline.add(

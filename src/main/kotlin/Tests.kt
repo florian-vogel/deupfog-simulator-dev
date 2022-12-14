@@ -121,14 +121,14 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
 
 fun testScenario01(): Simulator.SimulationParams {
     val software = Software("software")
-    val hierarchyLevel = 4
-    val serverDegree = 5
-    val edgesPerServer = 5
+    val hierarchyLevel = 5
+    val serverDegree = 1
+    val edgesPerServer = 1
     val linkBandwidth = 10
     val latency = 10
     val nodeCapacity = 100
     val updateSize = 1
-    val updateInitializationInstant = 100
+    val updateInitializationInstant = 200
 
     val serversToLevel = generateServerHierarchy(hierarchyLevel, serverDegree) { LinkSimParams(linkBandwidth, latency) }
     val serversInLowestHierarchy = serversToLevel.filter { it.hierarchyLevel == hierarchyLevel }.map { it.server }
