@@ -8,6 +8,7 @@ sim_name = 'Simulation01'
 
 def main():
     link_metrics()
+    update_metrics()
 
 
 def update_metrics():
@@ -17,7 +18,7 @@ def update_metrics():
         result_paths = os.listdir(path + update_path + '/')
         for csv_name in result_paths:
             csv = pandas.read_csv(path + '/' + update_path + '/' + csv_name)
-            generate_scatter_plot(csv, 'timestamp', 'count',
+            generate_rel_plot(csv, 'timestamp', ['count'],
                                   path + '/' + update_path + '/' + csv_name.partition('.')[0] + '.png')
 
 

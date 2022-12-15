@@ -174,7 +174,9 @@ abstract class UpdateReceiverNode(
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
-            val request = RegisterForUpdatesRequest(1, this, server, listeningFor)
+            // TODO: leave as input
+            val requestPackageSize = 1
+            val request = RegisterForUpdatesRequest(requestPackageSize, this, server, listeningFor)
             val nextHop = findShortestPath(this, server)?.peek()
             if (nextHop != null) {
                 receive(request)
@@ -218,7 +220,7 @@ class InitialServerState(
 open class Server(
     nodeSimParams: NodeSimParams,
     responsibleServer: List<Server>,
-    // servers can have software which needs to be updated
+    // servers can have software which needs to be updated --> eventuell klarere trennung zwischen sender und receiver
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialServerState: InitialServerState

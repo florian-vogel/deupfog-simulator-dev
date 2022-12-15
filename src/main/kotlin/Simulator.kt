@@ -69,7 +69,7 @@ class Simulator() {
 
         // main loop
         while (true) {
-            if (callbacks.isEmpty() || getCurrentTimestamp() > 300) {
+            if (callbacks.isEmpty() || getCurrentTimestamp() > 1000) {
                 break
             }
             val currentCallback = callbacks.poll()

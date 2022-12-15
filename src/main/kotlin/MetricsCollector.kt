@@ -203,7 +203,7 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
             val lastElement = linkStateMonitorTimeline.lastOrNull()
             if (lastElement != null) {
                 val copyLast = LinkStateMonitor(
-                    Simulator.getCurrentTimestamp(),
+                    Simulator.getCurrentTimestamp()-1,
                     lastElement.linksFree,
                     lastElement.linksOccupied,
                     lastElement.linksOffline
