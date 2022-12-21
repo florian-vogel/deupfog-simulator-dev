@@ -12,7 +12,7 @@ data class LinkSimParams(
 
 // an sich wird isOnline nicht mehr benötigt, denn links entfernen sich selbst vom node, wenn sie offline gehen
 class UnidirectionalLink(
-    private val from: Node, val to: Node, val simParams: LinkSimParams, initialLinkState: MutableLinkState
+    private val simParams: LinkSimParams, private val from: Node, val to: Node, initialLinkState: MutableLinkState
 ) : OnlineBehaviour(initialLinkState.isOnline, simParams.nextOnlineStateChange) {
     private var getNextPackage: (UnidirectionalLink) -> Package? = { _ -> null }
     private var currentTransmission: Transmission? = null
@@ -57,7 +57,11 @@ class UnidirectionalLink(
     fun tryTransmission(nextPackage: Package) {
         if (hasUnusedBandwidth() && isOnline()) {
             // TODO: leave transmissionTime calculation as input parameter
-            val transmissionTime = nextPackage.size / simParams.bandwidth + simParams.latency * 2
+            var size = nextPackage.size
+            if (nextPackage is UpdatePackage) {
+                size += nextPackage.update.size
+            }
+            val transmissionTime = size / simParams.bandwidth + simParams.latency * 2
             currentTransmission = SimpleTransmission(nextPackage, transmissionTime, this)
         }
         Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)

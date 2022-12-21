@@ -1,3 +1,4 @@
+/*
 fun dummyNextOnlineStateChange(timestamp: Int, online: Boolean): Int? {
     return if (!online) 100 else null
 }
@@ -13,7 +14,7 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
         listOf(),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(),
-        InitialServerState(false, null, null)
+        MutableServerState(false, null, null)
     )
     val edgeNode = Edge(
         NodeSimParams(10),
@@ -39,14 +40,14 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
 fun createSimpleTest4(): Simulator.SimulationParams {
     val software = Software("software")
     val serverNode = Server(
-        NodeSimParams(10), listOf(), listOf(), UpdateRetrievalParams(), InitialServerState(false, null, null)
+        NodeSimParams(10), listOf(), listOf(), UpdateRetrievalParams(), MutableServerState(false, null, null)
     )
     val serverNode2 = Server(
         NodeSimParams(10),
         listOf(serverNode),
         listOf(),
         UpdateRetrievalParams(true),
-        InitialServerState(false, null, null)
+        MutableServerState(false, null, null)
     )
     val edgeNode = Edge(
         NodeSimParams(10) { current, online -> current + 30 },
@@ -90,7 +91,7 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
         listOf(),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(),
-        InitialServerState(false, null, null)
+        MutableServerState(false, null, null)
     )
     val edgeNode = Edge(
         NodeSimParams(10),
@@ -118,98 +119,4 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
 
     return Simulator.SimulationParams(edges, servers, updates)
 }
-
-fun testScenario01(): Simulator.SimulationParams {
-    val software = Software("software")
-    val hierarchyLevel = 4
-    val serverDegree = 2
-    val edgesPerServer = 10
-    val linkBandwidth = 10
-    val latency = 10
-    val nodeCapacity = 100
-    val updateSize = 10
-    val updateInitializationInstant = 200
-
-    val serversToLevel = generateServerHierarchy(hierarchyLevel, serverDegree) { LinkSimParams(linkBandwidth, latency) }
-    val serversInLowestHierarchy = serversToLevel.filter { it.hierarchyLevel == hierarchyLevel }.map { it.server }
-    val rootServer = serversToLevel.find { it.hierarchyLevel == 0 }!!.server
-    val servers = serversToLevel.map { it.server }
-
-    val edgeSoftwareState = SoftwareState(software, 0, 1)
-    val edges = addEdgesToServers(
-        serversInLowestHierarchy,
-        edgesPerServer,
-        NodeSimParams(nodeCapacity),
-        listOf(edgeSoftwareState),
-        UpdateRetrievalParams(true),
-        LinkSimParams(linkBandwidth, latency)
-    )
-    val update = SoftwareUpdate(software, 1, updateSize) { 1 }
-    return Simulator.SimulationParams(
-        edges,
-        servers,
-        listOf(Simulator.InitialUpdateParams(update, updateInitializationInstant, rootServer as UpdateReceiverNode))
-    )
-}
-
-data class ServerToLevel(val server: Server, val hierarchyLevel: Int)
-
-fun generateServerHierarchy(
-    levels: Int,
-    serverDegree: Int,
-    simParamsAtLevel: (level: Int) -> LinkSimParams
-): List<ServerToLevel> {
-    var currentLevel = 0
-    val serversToLevel = mutableListOf<ServerToLevel>()
-    val rootServer = Server(
-        NodeSimParams(10),
-        listOf(),
-        listOf(),
-        UpdateRetrievalParams(registerAtServerForUpdates = true),
-        InitialServerState(true, null, null)
-    )
-    serversToLevel.add(
-        ServerToLevel(rootServer, 0)
-    )
-    while (currentLevel < levels) {
-        currentLevel++;
-        val parentServers = serversToLevel.filter { it.hierarchyLevel == currentLevel - 1 }
-        for (parent in parentServers) {
-            for (i in 1..serverDegree) {
-                val childServer = Server(
-                    NodeSimParams(10),
-                    listOf(parent.server),
-                    listOf(),
-                    UpdateRetrievalParams(registerAtServerForUpdates = true),
-                    InitialServerState(true, null, null)
-                )
-                UnidirectionalLink(parent.server, childServer, simParamsAtLevel(currentLevel), MutableLinkState(true))
-                UnidirectionalLink(childServer, parent.server, simParamsAtLevel(currentLevel), MutableLinkState(true))
-                serversToLevel.add(ServerToLevel(childServer, currentLevel))
-            }
-        }
-
-    }
-    return serversToLevel;
-}
-
-fun addEdgesToServers(
-    servers: List<Server>,
-    edgesPerServer: Int,
-    nodeSimParams: NodeSimParams,
-    runningSoftware: List<SoftwareState>,
-    updateRetrievalParams: UpdateRetrievalParams,
-    linkSimParams: LinkSimParams,
-): List<Edge> {
-    val addedEdges = mutableListOf<Edge>()
-    for (server in servers) {
-        for (i in 1..edgesPerServer) {
-            val edge =
-                Edge(nodeSimParams, listOf(server), runningSoftware, updateRetrievalParams, MutableNodeState(false))
-            addedEdges.add(edge)
-            UnidirectionalLink(server, edge, linkSimParams, MutableLinkState(true))
-            UnidirectionalLink(edge, server, linkSimParams, MutableLinkState(true))
-        }
-    }
-    return addedEdges
-}
+*/

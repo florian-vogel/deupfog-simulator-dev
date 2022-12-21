@@ -99,7 +99,7 @@ class UpdateMetricsCollector(
         }
     }
 
-    class TimestampToCount(private val timestamp: Int, private val count: Int) : CsvWritable {
+    class TimestampToCount(private val timestamp: Int, val count: Int) : CsvWritable {
 
         override fun toCsv(): List<CsvWritableObject> {
             return listOf(
@@ -118,9 +118,12 @@ class UpdateMetricsCollector(
             val arrivedAtServerTimeline = ArrayList(it.value.arrivedAtServerTimeline)
             val simulationName = Simulator.simulationName
             val path = "./analysis/stats-out/${simulationName}/updateMetrics/${it.key}/arrivedAtServerTimeline.csv"
-            var counter = 0
-            val toObj = arrivedAtServerTimeline.map { pair -> counter++; TimestampToCount(pair.first, counter) }
-            writeCsv(toObj, path, true)
+            val arrivesAtTimestamp = mutableListOf<TimestampToCount>()
+            arrivedAtServerTimeline.groupBy { v -> v.first }.forEach { (key, value) ->
+                val latest = arrivesAtTimestamp.lastOrNull()
+                arrivesAtTimestamp.add(TimestampToCount(key, latest?.count?.plus(value.count()) ?: value.count()))
+            }
+            writeCsv(arrivesAtTimestamp, path, true)
         }
     }
 
@@ -130,9 +133,12 @@ class UpdateMetricsCollector(
             val arrivedAtEdgeTimeline = ArrayList(it.value.arrivedAtEdgeTimeline)
             val simulationName = Simulator.simulationName
             val path = "./analysis/stats-out/${simulationName}/updateMetrics/${it.key}/arrivedAtEdgeTimeline.csv"
-            var counter = 0
-            val toObj = arrivedAtEdgeTimeline.map { pair -> counter++; TimestampToCount(pair.first, counter) }
-            writeCsv(toObj, path, true)
+            val arrivesAtTimestamp = mutableListOf<TimestampToCount>()
+            arrivedAtEdgeTimeline.groupBy { v -> v.first }.forEach { (key, value) ->
+                val latest = arrivesAtTimestamp.lastOrNull()
+                arrivesAtTimestamp.add(TimestampToCount(key, latest?.count?.plus(value.count()) ?: value.count()))
+            }
+            writeCsv(arrivesAtTimestamp, path, true)
         }
     }
 
@@ -160,7 +166,7 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
         override fun toCsv(): List<CsvWritableObject> {
             return listOf(
                 CsvWritableObject("timestamp", timestamp.toString()),
-                CsvWritableObject("linksFree", linksFree.toString()),
+                //CsvWritableObject("linksFree", linksFree.toString()),
                 CsvWritableObject("linksOccupied", linksOccupied.toString()),
                 CsvWritableObject("linksOffline", linksOffline.toString()),
             )
@@ -203,7 +209,7 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
             val lastElement = linkStateMonitorTimeline.lastOrNull()
             if (lastElement != null) {
                 val copyLast = LinkStateMonitor(
-                    Simulator.getCurrentTimestamp()-1,
+                    Simulator.getCurrentTimestamp() - 1,
                     lastElement.linksFree,
                     lastElement.linksOccupied,
                     lastElement.linksOffline

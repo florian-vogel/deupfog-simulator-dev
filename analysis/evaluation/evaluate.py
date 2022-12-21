@@ -4,11 +4,22 @@ import matplotlib.pyplot as plt
 import os
 
 sim_name = 'Simulation01'
+generate_metrics = {
+    'link': True,
+    'update': True,
+    'node': False
+}
 
 
 def main():
-    link_metrics()
-    update_metrics()
+    if generate_metrics['link']:
+        link_metrics()
+
+    if generate_metrics['update']:
+        update_metrics()
+
+    if generate_metrics['node']:
+        node_metrics()
 
 
 def update_metrics():
@@ -19,7 +30,7 @@ def update_metrics():
         for csv_name in result_paths:
             csv = pandas.read_csv(path + '/' + update_path + '/' + csv_name)
             generate_rel_plot(csv, 'timestamp', ['count'],
-                                  path + '/' + update_path + '/' + csv_name.partition('.')[0] + '.png')
+                              path + '/' + update_path + '/' + csv_name.partition('.')[0] + '.png')
 
 
 def node_metrics():
@@ -46,7 +57,7 @@ def generate_scatter_plot(csv, x, y, result_fig_path):
 
 def generate_rel_plot(csv, x, ys, result_fig_path):
     for y in ys:
-        seaborn.relplot(x=x, y=y, data=csv)
+        seaborn.relplot(x=x, y=y, data=csv, kind="line")
 
     plt.savefig('./' + result_fig_path)
     plt.show()

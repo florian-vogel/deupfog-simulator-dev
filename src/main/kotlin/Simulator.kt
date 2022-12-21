@@ -42,12 +42,15 @@ class Simulator() {
         val edges: List<Edge>, val servers: List<Server>, val updatesParams: List<InitialUpdateParams>
     )
 
+    // todo: logToConsole and collectMetrics as parameters
     data class SimConfigParams(
         val nodesStartOnline: Boolean = true,
+        val maxSimDuration: Int? = 50000
     )
 
     fun runSimulation(
         // since I specify all network parameters here the topology is static as well as the update schedule
+        // todo: following as class params
         params: SimulationParams,
         simConfigParams: SimConfigParams
     ) {
@@ -69,7 +72,7 @@ class Simulator() {
 
         // main loop
         while (true) {
-            if (callbacks.isEmpty() || getCurrentTimestamp() > 1000) {
+            if (callbacks.isEmpty() || getCurrentTimestamp() > simConfigParams.maxSimDuration!!) {
                 break
             }
             val currentCallback = callbacks.poll()

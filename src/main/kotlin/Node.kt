@@ -213,22 +213,23 @@ abstract class UpdateReceiverNode(
     }
 }
 
-class InitialServerState(
-    online: Boolean, val receivers: List<UpdateReceiverNode>? = null, val updates: List<SoftwareUpdate>? = null
+class MutableServerState(
+    online: Boolean,
+    val subscriberRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf(),
+    val updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>> = mutableMapOf(),
 ) : MutableNodeState(online)
 
 open class Server(
     nodeSimParams: NodeSimParams,
     responsibleServer: List<Server>,
-    // servers can have software which needs to be updated --> eventuell klarere trennung zwischen sender und receiver
+    // todo: servers can have software which needs to be updated --> eventuell klarere trennung zwischen sender und receiver
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    initialServerState: InitialServerState
+    initialServerState: MutableServerState
 ) : UpdateReceiverNode(
     nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
 ) {
-    private var receiverRegistry = initialServerState.receivers?.associate { it to it.listeningFor() }?.toMutableMap()
-    private var updateRegistry = initialServerState.updates?.associate { it.type to mutableListOf(it) }?.toMutableMap()
+    private var currentState = initialServerState;
 
     override fun receive(p: Package) {
         super.receive(p)
@@ -240,13 +241,13 @@ open class Server(
     override fun processUpdate(update: SoftwareUpdate) {
         super.processUpdate(update)
         updateUpdateRegistry(update)
-        initUpdatePackages()
+        initUpdatePackagesToAllSubscribers()
     }
 
     override fun listeningFor(): List<SoftwareState> {
         // TODO: refactor this
         val runningSoftware = super.listeningFor()
-        val serverNodeListeningFor = getCurrentUpdateRegistryStates() + getCurrentReceiverRegistryStates()
+        val serverNodeListeningFor = getCurrentUpdateRegistryStates() + getCurrentSubscriberRegistryStates()
         val combined = runningSoftware + serverNodeListeningFor
         val oneValueForEachType = mutableListOf<SoftwareState>()
         combined.forEach { combinedValue ->
@@ -267,7 +268,7 @@ open class Server(
         super.addLink(link)
         if (link.isOnline()) {
             if (link.to is UpdateReceiverNode) {
-                val receiverRegistryEntry = receiverRegistry?.get(link.to)
+                val receiverRegistryEntry = currentState.subscriberRegistry.get(link.to)
                 if (receiverRegistryEntry != null) {
                     initUpdatePackageAndPassToLink(link.to, receiverRegistryEntry)
                 }
@@ -277,34 +278,41 @@ open class Server(
 
     override fun removeLink(link: UnidirectionalLink) {
         super.removeLink(link)
-        receiverRegistry?.remove(link.to)
+        // todo: check if other links exist
+        currentState.subscriberRegistry.remove(link.to)
     }
 
     private fun processRequest(request: UpdateRequest) {
         if (request is PullLatestUpdatesRequest) {
+            // todo: bei pull keine registrierung, macht nur sinn, wenn es wirklich nur einen server gibt,
+            // sonst kommt das update nie beim sub-server an, da dieser es nicht anfragt
+            // alternativ auch in subscriber registry speichern aber über meta daten steuern, dass kein update
+            // gepushed wird
             initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
         } else if (request is RegisterForUpdatesRequest) {
             registerNodeInLocalRegistry(request.initialPosition, request.softwareStates)
         }
     }
 
-    private fun initUpdatePackages() {
-        receiverRegistry?.forEach {
+    private fun initUpdatePackagesToAllSubscribers() {
+        currentState.subscriberRegistry.forEach {
             initUpdatePackageAndPassToLink(it.key, it.value)
         }
     }
 
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
-        if (updateRegistry?.get(update.type) == null) {
-            updateRegistry = mutableMapOf(update.type to mutableListOf(update))
+        val registry = currentState.updateRegistry[update.type];
+        if (registry == null) {
+            // todo: can I replace this with registry = ...
+            currentState.updateRegistry[update.type] = mutableListOf(update)
         } else {
-            updateRegistry!![update.type]!!.add(update)
+            registry.add(update)
         }
     }
 
     private fun getCurrentUpdateRegistryStates(): List<SoftwareState> {
         val states = mutableListOf<SoftwareState>()
-        updateRegistry?.forEach {
+        currentState.updateRegistry.forEach {
             val state = SoftwareState(it.key, 0, 0)
             it.value.sortBy { update -> update.updatesToVersion }
             it.value.forEach { update -> state.applyUpdate(update) }
@@ -313,19 +321,15 @@ open class Server(
         return states
     }
 
-    private fun getCurrentReceiverRegistryStates(): List<SoftwareState> {
-        val states = mutableListOf<SoftwareState>()
-        receiverRegistry?.forEach {
-            states += it.value
-        }
-        return states
+    private fun getCurrentSubscriberRegistryStates(): List<SoftwareState> {
+        return currentState.subscriberRegistry.map { it.value }.flatten()
     }
 
     private fun initUpdatePackageAndPassToLink(
         target: UpdateReceiverNode, targetSoftwareStates: List<SoftwareState>
     ) {
         targetSoftwareStates.map {
-            updateRegistry?.get(it.type)?.filter { update ->
+            currentState.updateRegistry[it.type]?.filter { update ->
                 it.type.updateCompatible(
                     it.versionNumber, update.updatesToVersion
                 )
@@ -340,22 +344,13 @@ open class Server(
     }
 
     private fun registerNodeInLocalRegistry(
-        node: UpdateReceiverNode, listeningFor: List<SoftwareState>?
+        node: UpdateReceiverNode, listeningFor: List<SoftwareState>
     ) {
-        //
-        if (receiverRegistry == null) {
-            receiverRegistry = mutableMapOf()
-        }
-
-        if (listeningFor != null) {
-            receiverRegistry?.set(node, listeningFor.toMutableList())
-            // TODO: only send those which the server has
-            initUpdatePackageAndPassToLink(node, listeningFor)
-            // TODO: register only for those which server wasn't listening before
-            registerAtServers(listeningFor())
-        } else {
-            receiverRegistry?.set(node, mutableListOf())
-        }
+        currentState.subscriberRegistry[node] = listeningFor.toMutableList()
+        // TODO: only send those which the server has
+        initUpdatePackageAndPassToLink(node, listeningFor)
+        // TODO: register only for those which server wasn't listening before
+        registerAtServers(listeningFor())
     }
 }
 
