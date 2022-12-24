@@ -35,7 +35,7 @@ class Simulator() {
     }
 
     data class InitialUpdateParams(
-        val update: SoftwareUpdate, val atInstant: Int, val initialPosition: UpdateReceiverNode
+        val update: SoftwareUpdate, val atInstant: Int, val initialPosition: Server
     )
 
     data class SimulationParams(
@@ -89,9 +89,7 @@ class Simulator() {
         updates.stream().forEach {
             val p = UpdatePackage(it.initialPosition, it.initialPosition, 1, it.update)
             val initUpdateCallback = TimedCallback(it.atInstant) {
-                if (!it.initialPosition.listeningFor().map { it.type }.contains(it.update.type))
-                    throw Exception("update cannot be initialized at node")
-                p.initialPosition.receive(p)
+                it.initialPosition.initializeUpdate(p)
             }
             callbacks.add(initUpdateCallback)
         }

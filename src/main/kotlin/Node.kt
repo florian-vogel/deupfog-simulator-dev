@@ -7,32 +7,29 @@ open class MutableNodeState(
 open class NodeSimParams(
     val capacity: Int,
     val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
-    // val calculateProcessingTime: ((p: Package) -> Int)? = null
+    val calculateProcessingTime: ((p: Package) -> Int)? = null
 )
 
 open class Node(
     // default initially online false, if set to true initially, edges need to be registered manually at their servers
     simParams: NodeSimParams, initialNodeState: MutableNodeState = MutableNodeState(false)
-) : OnlineBehaviour(initialNodeState.online, simParams.nextOnlineStateChange) {
+) : OnlineState(initialNodeState.online, simParams.nextOnlineStateChange) {
     private val links: MutableList<UnidirectionalLink> = mutableListOf()
     private val packageQueue = LinkedList<Package>()
 
-    init {
-    }
-
     override fun changeOnlineState(value: Boolean) {
         super.changeOnlineState(value)
-        Simulator.metrics!!.nodeMetricsCollector.onNodeStateChanged(this)
+        Simulator.metrics?.nodeMetricsCollector?.onNodeStateChanged(this)
     }
 
     open fun receive(p: Package) {
-        if (isOnline() && p.destination != this) {
-            lineUpPackage(p)
+        if (getOnlineState() && p.destination != this) {
+            addToPackageQueue(p)
         }
     }
 
     open fun addLink(link: UnidirectionalLink) {
-        if (link.isOnline()) {
+        if (link.getOnlineState()) {
             links.add(link)
             link.setGetNextPackage { getNextPackage(it) }
         }
@@ -72,7 +69,7 @@ open class Node(
         return null
     }
 
-    private fun lineUpPackage(p: Package) {
+    private fun addToPackageQueue(p: Package) {
         this.packageQueue.add(p)
         val nextHop = findShortestPath(this, p.destination)?.firstOrNull()
         if (nextHop != null) {
@@ -103,13 +100,13 @@ abstract class UpdateReceiverNode(
 
     override fun receive(p: Package) {
         super.receive(p)
-        if (p is UpdatePackage && isOnline() && arrivedAtDestination(p, this)) {
+        if (p is UpdatePackage && getOnlineState() && arrivedAtDestination(p, this)) {
             processUpdate(p.update)
         }
     }
 
     override fun changeOnlineState(value: Boolean) {
-        val onlineStatusChanged = value != isOnline();
+        val onlineStatusChanged = value != getOnlineState();
         super.changeOnlineState(value)
         if (onlineStatusChanged) {
             if (value) {
@@ -122,7 +119,7 @@ abstract class UpdateReceiverNode(
 
     override fun addLink(link: UnidirectionalLink) {
         super.addLink(link)
-        if (link.isOnline()) {
+        if (link.getOnlineState()) {
             if (link.to is Server) {
                 registerAtServer(link.to, listeningFor())
             }
@@ -139,7 +136,7 @@ abstract class UpdateReceiverNode(
     }
 
     private fun onConnected() {
-        if (isOnline()) {
+        if (getOnlineState()) {
             registerAtServers(listeningFor())
             makePullRequestsRecursive()
         } else {
@@ -148,7 +145,7 @@ abstract class UpdateReceiverNode(
     }
 
     private fun onDisconnected() {
-        if (!isOnline()) {
+        if (!getOnlineState()) {
             removePullRequestSchedule()
         } else {
             throw Exception("called onDisconnected but isOnline() returned true")
@@ -268,7 +265,7 @@ open class Server(
 
     override fun addLink(link: UnidirectionalLink) {
         super.addLink(link)
-        if (link.isOnline()) {
+        if (link.getOnlineState()) {
             if (link.to is UpdateReceiverNode) {
                 val receiverRegistryEntry = currentState.subscriberRegistry.get(link.to)
                 if (receiverRegistryEntry != null) {
@@ -308,6 +305,8 @@ open class Server(
     }
 
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
+        // todo: updateing update registry might be linked to sendOfUpdatesToSubs
+        // show link physically
         val registry = currentState.updateRegistry[update.type];
         if (registry == null) {
             // todo: can I replace this with registry = ...
@@ -367,6 +366,10 @@ open class Server(
         }
         // TODO: register only for those which server wasn't listening before
         registerAtServers(listeningFor())
+    }
+
+    fun initializeUpdate(updatePackage: UpdatePackage) {
+        processUpdate(updatePackage.update)
     }
 }
 

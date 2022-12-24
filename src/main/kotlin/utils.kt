@@ -14,7 +14,7 @@ private fun findShortestPathRek(from: Node, to: Node, alreadyVisited: Set<Node>)
         return list
     }
     val linksAtFromNodeToUnvisited =
-        from.getLinks().filter { !alreadyVisited.contains<Node>(it.to) && it.to.isOnline() }
+        from.getLinks().filter { !alreadyVisited.contains<Node>(it.to) && it.to.getOnlineState() }
 
     if (linksAtFromNodeToUnvisited.isEmpty()) {
         return null

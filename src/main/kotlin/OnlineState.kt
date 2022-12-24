@@ -1,10 +1,7 @@
-import Simulator
-import TimedCallback
-
-open class OnlineBehaviour(
-    initial: Boolean = false, private val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
+open class OnlineState(
+    private var state: Boolean = false,
+    private val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
 ) {
-    private var online = initial
     private var changeOnlineStateCallback: TimedCallback? = null
 
     init {
@@ -12,24 +9,28 @@ open class OnlineBehaviour(
     }
 
     open fun changeOnlineState(value: Boolean) {
-        online = value
+        state = value
+        resetSetOnlineCallback()
+    }
+
+    fun getOnlineState(): Boolean {
+        return state
+    }
+
+    private fun resetSetOnlineCallback() {
         if (changeOnlineStateCallback != null) {
             Simulator.cancelCallback(changeOnlineStateCallback!!)
         }
         changeOnlineStateCallback = createSetOnlineCallback()
     }
 
-    fun isOnline(): Boolean {
-        return online
-    }
-
     private fun createSetOnlineCallback(): TimedCallback? {
         val nextOnlineStateChange = nextOnlineStateChange
         if (nextOnlineStateChange != null) {
-            val timestamp = nextOnlineStateChange(Simulator.getCurrentTimestamp(), isOnline())
+            val timestamp = nextOnlineStateChange(Simulator.getCurrentTimestamp(), getOnlineState())
             if (timestamp != null) {
                 val callback = TimedCallback(timestamp) {
-                    if (isOnline()) {
+                    if (getOnlineState()) {
                         changeOnlineState(false)
                     } else {
                         changeOnlineState(true)

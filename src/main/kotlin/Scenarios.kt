@@ -24,7 +24,7 @@ class Scenarios {
         val scenario01Configuration = ScenarioConfiguration(
             1,
             1,
-            ({ NodeSimParams(100) }),
+            ({ NodeSimParams(100, null, null) }),
             ({ LinkSimParams(1, 1) }),
             listOf(update01),
             listOf(edgeGroup)
@@ -105,7 +105,7 @@ class Scenarios {
 
         val initialUpdateParams = configuration.updates.map {
             Simulator.InitialUpdateParams(
-                it, UPDATE_INIT_TIMESTAMP, serverHierarchy[0]!![0]
+                it, UPDATE_INIT_TIMESTAMP, serverHierarchy[0]!![0] as Server
             )
         }
 

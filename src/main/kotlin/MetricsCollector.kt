@@ -175,20 +175,20 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
 
     private val linkStateMonitorTimeline = mutableListOf(
         LinkStateMonitor(0, links.count {
-            it.isOnline() && it.hasUnusedBandwidth()
+            it.getOnlineState() && it.hasUnusedBandwidth()
         }, links.count {
-            it.isOnline() && !it.hasUnusedBandwidth()
+            it.getOnlineState() && !it.hasUnusedBandwidth()
         }, links.count {
-            !it.isOnline()
+            !it.getOnlineState()
         })
     )
 
 
     fun onChangedLinkState(link: UnidirectionalLink) {
         val lastLinkState = linkData[link]?.linkStateTimeline?.peek()?.second
-        val newLinkState: LinkState = if (link.isOnline() && link.hasUnusedBandwidth()) {
+        val newLinkState: LinkState = if (link.getOnlineState() && link.hasUnusedBandwidth()) {
             LinkState.FREE
-        } else if (link.isOnline() && !link.hasUnusedBandwidth()) {
+        } else if (link.getOnlineState() && !link.hasUnusedBandwidth()) {
             LinkState.OCCUPIED
         } else {
             LinkState.OFFLINE
@@ -197,11 +197,11 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
             linkData[link]?.linkStateTimeline?.add(Pair(Simulator.getCurrentTimestamp(), newLinkState))
 
             val newLinkStateMonitor = LinkStateMonitor(Simulator.getCurrentTimestamp(), links.count {
-                it.isOnline() && it.hasUnusedBandwidth()
+                it.getOnlineState() && it.hasUnusedBandwidth()
             }, links.count {
-                it.isOnline() && !it.hasUnusedBandwidth()
+                it.getOnlineState() && !it.hasUnusedBandwidth()
             }, links.count {
-                !it.isOnline()
+                !it.getOnlineState()
             })
 
             linkStateMonitorTimeline.removeIf { it.timestamp == newLinkStateMonitor.timestamp }
@@ -266,9 +266,9 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
 
     private val nodeStateMonitorTimeline = mutableListOf(
         NodeStateMonitor(0, nodes.count {
-            it.isOnline()
+            it.getOnlineState()
         }, nodes.count {
-            !it.isOnline()
+            !it.getOnlineState()
         })
     )
 
@@ -283,7 +283,7 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
 
     fun onNodeStateChanged(node: Node) {
         val lastNodeState = nodeMetrics[node]?.nodeStateTimeline?.peek()?.second
-        val newLinkState: NodeState = if (node.isOnline()) {
+        val newLinkState: NodeState = if (node.getOnlineState()) {
             NodeState.ONLINE
         } else {
             NodeState.OFFLINE
@@ -292,9 +292,9 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
             nodeMetrics[node]?.nodeStateTimeline?.add(Pair(Simulator.getCurrentTimestamp(), newLinkState))
 
             val newNodeStateMonitor = NodeStateMonitor(Simulator.getCurrentTimestamp(), nodes.count {
-                it.isOnline()
+                it.getOnlineState()
             }, nodes.count {
-                !it.isOnline()
+                !it.getOnlineState()
             })
 
             if (nodeStateMonitorTimeline.last().timestamp == newNodeStateMonitor.timestamp) {
