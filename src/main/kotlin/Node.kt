@@ -230,6 +230,7 @@ open class Server(
     nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
 ) {
     private var currentState = initialServerState;
+    private val recentPullNodesRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
 
     override fun receive(p: Package) {
         super.receive(p)
@@ -247,7 +248,8 @@ open class Server(
     override fun listeningFor(): List<SoftwareState> {
         // TODO: refactor this
         val runningSoftware = super.listeningFor()
-        val serverNodeListeningFor = getCurrentUpdateRegistryStates() + getCurrentSubscriberRegistryStates()
+        val serverNodeListeningFor =
+            getCurrentUpdateRegistryStates() + getCurrentSubscriberRegistryStates() + getCurrentRecentPullNodesRegistryStates()
         val combined = runningSoftware + serverNodeListeningFor
         val oneValueForEachType = mutableListOf<SoftwareState>()
         combined.forEach { combinedValue ->
@@ -288,9 +290,14 @@ open class Server(
             // sonst kommt das update nie beim sub-server an, da dieser es nicht anfragt
             // alternativ auch in subscriber registry speichern aber über meta daten steuern, dass kein update
             // gepushed wird
-            initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
+            // initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
+            sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
+                request.initialPosition, request.softwareStates, registerAsSubscriber = false
+            )
         } else if (request is RegisterForUpdatesRequest) {
-            registerNodeInLocalRegistry(request.initialPosition, request.softwareStates)
+            sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
+                request.initialPosition, request.softwareStates, registerAsSubscriber = true
+            )
         }
     }
 
@@ -321,6 +328,10 @@ open class Server(
         return states
     }
 
+    private fun getCurrentRecentPullNodesRegistryStates(): List<SoftwareState> {
+        return recentPullNodesRegistry.map { it.value }.flatten()
+    }
+
     private fun getCurrentSubscriberRegistryStates(): List<SoftwareState> {
         return currentState.subscriberRegistry.map { it.value }.flatten()
     }
@@ -343,12 +354,17 @@ open class Server(
         }
     }
 
-    private fun registerNodeInLocalRegistry(
-        node: UpdateReceiverNode, listeningFor: List<SoftwareState>
+    private fun sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
+        node: UpdateReceiverNode, listeningFor: List<SoftwareState>, registerAsSubscriber: Boolean
     ) {
-        currentState.subscriberRegistry[node] = listeningFor.toMutableList()
-        // TODO: only send those which the server has
-        initUpdatePackageAndPassToLink(node, listeningFor)
+        if (registerAsSubscriber) {
+            currentState.subscriberRegistry[node] = listeningFor.toMutableList()
+            // TODO: only send those which the server has
+            initUpdatePackageAndPassToLink(node, listeningFor)
+        } else {
+            recentPullNodesRegistry[node] = listeningFor.toMutableList()
+            initUpdatePackageAndPassToLink(node, listeningFor)
+        }
         // TODO: register only for those which server wasn't listening before
         registerAtServers(listeningFor())
     }

@@ -1,3 +1,5 @@
+import shutil
+
 import seaborn
 import pandas
 import matplotlib.pyplot as plt
@@ -7,11 +9,18 @@ sim_name = 'Simulation01'
 generate_metrics = {
     'link': True,
     'update': True,
-    'node': False
+    'node': True
 }
+evaluation_output_location = './../metrics'
 
 
 def main():
+    if os.path.isdir(evaluation_output_location):
+        shutil.rmtree(evaluation_output_location)
+    os.mkdir(evaluation_output_location)
+    os.mkdir(evaluation_output_location + '/linkMetrics')
+    os.mkdir(evaluation_output_location + '/nodeMetrics')
+    os.mkdir(evaluation_output_location + '/updateMetrics')
     if generate_metrics['link']:
         link_metrics()
 
@@ -29,37 +38,28 @@ def update_metrics():
         result_paths = os.listdir(path + update_path + '/')
         for csv_name in result_paths:
             csv = pandas.read_csv(path + '/' + update_path + '/' + csv_name)
-            generate_rel_plot(csv, 'timestamp', ['count'],
-                              path + '/' + update_path + '/' + csv_name.partition('.')[0] + '.png')
+            seaborn.relplot(data=csv, x='timestamp', y='count', kind="line")
+            plt.savefig(evaluation_output_location + '/updateMetrics/' + csv_name.partition('.')[
+                0] + '.png')
+            plt.show()
 
 
 def node_metrics():
     path = r'../stats-out/Simulation01/nodeMetrics/'
     csv = pandas.read_csv(path + 'nodeStateMonitorTimeline.csv')
-    generate_scatter_plot(csv, 'timestamp', 'nodesOnline', path + 'nodeStateMonitorTimeline.png')
+
+    seaborn.relplot(data=csv, x='timestamp', y='nodesOnline', kind="line")
+    plt.savefig(evaluation_output_location + '/nodeMetrics/nodeStateMonitorTimeline.png')
+    plt.show()
 
 
 def link_metrics():
     path = r'../stats-out/Simulation01/linkMetrics/'
     csv = pandas.read_csv(path + 'linkStateMonitorTimeline.csv')
     csv_m = csv.melt('timestamp', var_name='type', value_name='number')
+
     seaborn.relplot(data=csv_m, x='timestamp', y='number', hue='type', kind="line")
-
-    plt.savefig('./' + path + 'linkStateMonitorTimeline.png')
-    plt.show()
-
-
-def generate_scatter_plot(csv, x, y, result_fig_path):
-    seaborn.scatterplot(x=x, y=y, data=csv, style="line")
-    plt.savefig('./' + result_fig_path)
-    plt.show()
-
-
-def generate_rel_plot(csv, x, ys, result_fig_path):
-    for y in ys:
-        seaborn.relplot(x=x, y=y, data=csv, kind="line")
-
-    plt.savefig('./' + result_fig_path)
+    plt.savefig(evaluation_output_location + '/linkMetrics/linkStateMonitorTimeline.png')
     plt.show()
 
 

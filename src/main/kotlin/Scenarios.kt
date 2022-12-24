@@ -1,7 +1,38 @@
 const val UPDATE_INIT_TIMESTAMP = 5000
 
 class Scenarios {
-    fun testScenario01(): Simulator.SimulationParams {
+    fun testScenario(): Simulator.SimulationParams {
+        // 1 size unit = 1 byte
+        // 1 temp unit = 1 ms
+        val software = Software("testSoftware")
+        val update01 = SoftwareUpdate(software, 1, 1) { 1 }
+        // val update02 = SoftwareUpdate(software, 2, 1) { 1 }
+        val edgeGroup = EdgeGroupConfiguration(
+            listOf(SoftwareState(software, 0, 0)),
+            // UpdateRetrievalParams(registerAtServerForUpdates = false, sendUpdateRequestsInterval = 20),
+            UpdateRetrievalParams(registerAtServerForUpdates = true),
+            { NodeSimParams(100) },
+            { LinkSimParams(1, 1) },
+        ) { level ->
+            if (level == 1) {
+                1
+            } else {
+                1
+            }
+        }
+
+        val scenario01Configuration = ScenarioConfiguration(
+            1,
+            1,
+            ({ NodeSimParams(100) }),
+            ({ LinkSimParams(1, 1) }),
+            listOf(update01),
+            listOf(edgeGroup)
+        )
+        return generateScenario(scenario01Configuration)
+    }
+
+    fun scenarioWithTwoUpdates(): Simulator.SimulationParams {
         // 1 size unit = 1 byte
         // 1 temp unit = 1 ms
         val software = Software("testSoftware")
@@ -10,13 +41,14 @@ class Scenarios {
         val edgeGroup = EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             UpdateRetrievalParams(registerAtServerForUpdates = true),
+            //UpdateRetrievalParams(registerAtServerForUpdates = false, sendUpdateRequestsInterval = 3000),
             { NodeSimParams(1000000) },
             { LinkSimParams(1000, 20) },
         ) { level ->
             if (level == 6) {
-                5
-            } else if (level == 5) {
                 3
+            } else if (level == 5) {
+                0
             } else {
                 0
             }
@@ -125,7 +157,7 @@ private fun generateServerHierarchy(
 
 fun addEdgesToHierarchy(
     serverHierarchy: Map<Int, List<Server>>,
-    runningSoftware: List<SoftwareState>,
+    initRunningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     edgesPerServerAtLevel: (level: Int) -> Int,
     edgeSimParamsAtLevel: (level: Int) -> NodeSimParams,
@@ -141,7 +173,12 @@ fun addEdgesToHierarchy(
         for (server in serversAtLevel) {
             for (i in 1..edgesPerServer) {
                 val edge = Edge(
-                    edgeSimParams, listOf(server), runningSoftware, updateRetrievalParams, MutableNodeState(false)
+                    edgeSimParams,
+                    listOf(server),
+                    // todo: copy interface, implemented by softwareState, with copy method
+                    initRunningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) },
+                    updateRetrievalParams,
+                    MutableNodeState(false)
                 )
                 edges.add(edge)
                 UnidirectionalLink(linkSimParams, server, edge, MutableLinkState(true))
