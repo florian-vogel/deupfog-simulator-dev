@@ -5,63 +5,74 @@ open class MutableNodeState(
 )
 
 open class NodeSimParams(
-    val capacity: Int,
+    val storageCapacity: Int,
     val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
     val calculateProcessingTime: ((p: Package) -> Int)? = null
 )
 
 open class Node(
     // default initially online false, if set to true initially, edges need to be registered manually at their servers
-    simParams: NodeSimParams, initialNodeState: MutableNodeState = MutableNodeState(false)
+    // this behaviour might be consistent but strange
+    // => when starting offline the clear
+    // => when starting online treat the network as an
+    // initial goOnline, but a starting state can still be
+    // configured if nessasary
+    private val simParams: NodeSimParams, initialNodeState: MutableNodeState = MutableNodeState(false)
 ) : OnlineState(initialNodeState.online, simParams.nextOnlineStateChange) {
     private val links: MutableList<UnidirectionalLink> = mutableListOf()
     private val packageQueue = LinkedList<Package>()
+
+
+    open fun receive(p: Package) {
+        if (!getOnlineState()) return;
+        if (p.destination != this) {
+            addToPackageQueue(p)
+        }
+    }
 
     override fun changeOnlineState(value: Boolean) {
         super.changeOnlineState(value)
         Simulator.metrics?.nodeMetricsCollector?.onNodeStateChanged(this)
     }
 
-    open fun receive(p: Package) {
-        if (getOnlineState() && p.destination != this) {
-            addToPackageQueue(p)
-        }
-    }
-
     open fun addLink(link: UnidirectionalLink) {
-        if (link.getOnlineState()) {
-            links.add(link)
-            link.setGetNextPackage { getNextPackage(it) }
-        }
+        links.add(link)
+        link.initializeFromParams({ getNextPackage(it) }) { p -> this.removePackage(p) }
     }
 
     open fun removeLink(link: UnidirectionalLink) {
         links.remove(link)
     }
 
-    fun getLinks(): List<UnidirectionalLink> {
-        return this.links
+    fun getLinks(): List<UnidirectionalLink>? {
+        if (!getOnlineState()) return null;
+        return this.links.filter { it.getOnlineState() }
     }
 
     fun getLinkTo(node: Node): UnidirectionalLink? {
-        return links.find { it.to == node }
+        if (!getOnlineState()) return null;
+        return links.find { it.to == node && it.getOnlineState() }
     }
 
-    fun getCapacityInUse(): Int {
-        return this.packageQueue.sumOf { it.size }
+    protected fun addToPackageQueue(p: Package) {
+        this.packageQueue.add(p)
+        val nextHop = findShortestPath(this, p.destination)?.firstOrNull()
+        if (nextHop != null) {
+            links.find { it.to == nextHop }?.tryTransmission(p)
+        }
     }
 
-    fun removePackage(p: Package) {
-        this.packageQueue.remove(p)
+    private fun getFreeStorageCapacity(): Int {
+        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.size }
     }
+
 
     private fun getNextPackage(link: UnidirectionalLink): Package? {
         val queueCopy = packageQueue.toList()
         queueCopy.forEach {
             val nextHop = findShortestPath(this, it.destination)?.firstOrNull()
             if (nextHop == null) {
-                packageQueue.remove(it)
-                Simulator.metrics!!.nodeMetricsCollector.onPackageLost(this)
+                packageLost(it)
             } else if (nextHop == link.to) {
                 return it
             }
@@ -69,16 +80,16 @@ open class Node(
         return null
     }
 
-    private fun addToPackageQueue(p: Package) {
-        this.packageQueue.add(p)
-        val nextHop = findShortestPath(this, p.destination)?.firstOrNull()
-        if (nextHop != null) {
-            links.find { it.to == nextHop }?.tryTransmission(p)
-        }
+    private fun removePackage(p: Package) {
+        this.packageQueue.remove(p)
+    }
+
+    private fun packageLost(p: Package){
+        removePackage(p)
+        Simulator.metrics!!.nodeMetricsCollector.onPackageLost(this)
     }
 }
 
-// TODO: eventuell jede data distribution strategy in eigener node-klasse
 data class UpdateRetrievalParams(
     // Push
     val registerAtServerForUpdates: Boolean = false,
@@ -86,7 +97,6 @@ data class UpdateRetrievalParams(
     val sendUpdateRequestsInterval: Int? = null
 )
 
-// TODO: In Push und Pull node trennen, update retrival params entfernen
 abstract class UpdateReceiverNode(
     nodeSimParams: NodeSimParams,
     private val responsibleServers: List<Server>,
@@ -98,23 +108,54 @@ abstract class UpdateReceiverNode(
 ) : Node(nodeSimParams, initialNodeState) {
     private var pullRequestSchedule: TimedCallback? = null
 
-    override fun receive(p: Package) {
-        super.receive(p)
-        if (p is UpdatePackage && getOnlineState() && arrivedAtDestination(p, this)) {
-            processUpdate(p.update)
+    init {
+        if (initialNodeState.online) {
+            initStrategy()
         }
+    }
+
+    override fun receive(p: Package) {
+        if (!getOnlineState()) return;
+        if (p is UpdatePackage && arrivedAtDestination(p, this)) {
+            processUpdate(p.update)
+        } else {
+            addToPackageQueue(p)
+        }
+    }
+
+    open fun processUpdate(update: SoftwareUpdate) {
+        updateRunningSoftware(update)
+        Simulator.getUpdateMetrics()?.onArrive(update, this)
     }
 
     override fun changeOnlineState(value: Boolean) {
         val onlineStatusChanged = value != getOnlineState();
-        super.changeOnlineState(value)
         if (onlineStatusChanged) {
             if (value) {
-                onConnected()
+                initStrategy()
             } else {
-                onDisconnected()
+                cancelStrategy()
             }
         }
+        super.changeOnlineState(value)
+    }
+
+    private fun initStrategy() {
+        if (!getOnlineState()) return
+        registerAtServers(listeningFor())
+        makePullRequestsRecursive()
+    }
+
+    protected fun registerAtServers(listeningFor: List<SoftwareState>) {
+        if (updateRetrievalParams.registerAtServerForUpdates) {
+            responsibleServers.forEach {
+                registerAtServer(it, listeningFor)
+            }
+        }
+    }
+
+    private fun cancelStrategy() {
+        removePullRequestSchedule()
     }
 
     override fun addLink(link: UnidirectionalLink) {
@@ -126,31 +167,11 @@ abstract class UpdateReceiverNode(
         }
     }
 
-    open fun processUpdate(update: SoftwareUpdate) {
-        Simulator.getUpdateMetrics()?.onArrive(update, this)
-        updateRunningSoftware(update)
-    }
 
     open fun listeningFor(): List<SoftwareState> {
         return runningSoftware
     }
 
-    private fun onConnected() {
-        if (getOnlineState()) {
-            registerAtServers(listeningFor())
-            makePullRequestsRecursive()
-        } else {
-            throw Exception("called onConnected but isOnline() returned false")
-        }
-    }
-
-    private fun onDisconnected() {
-        if (!getOnlineState()) {
-            removePullRequestSchedule()
-        } else {
-            throw Exception("called onDisconnected but isOnline() returned true")
-        }
-    }
 
     private fun updateRunningSoftware(update: SoftwareUpdate) {
         val targetSoftware = runningSoftware::find { it.type == update.type }
@@ -159,14 +180,6 @@ abstract class UpdateReceiverNode(
             registerAtServers(listeningFor())
         }
 
-    }
-
-    protected fun registerAtServers(listeningFor: List<SoftwareState>) {
-        if (updateRetrievalParams.registerAtServerForUpdates) {
-            responsibleServers.forEach {
-                registerAtServer(it, listeningFor)
-            }
-        }
     }
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
@@ -191,12 +204,16 @@ abstract class UpdateReceiverNode(
     private fun makePullRequestsRecursive() {
         if (updateRetrievalParams.sendUpdateRequestsInterval != null) {
             sendPullRequestsToResponsibleServers()
-            pullRequestSchedule =
-                TimedCallback(Simulator.getCurrentTimestamp() + updateRetrievalParams.sendUpdateRequestsInterval) {
-                    makePullRequestsRecursive()
-                }
-            Simulator.addCallback(pullRequestSchedule!!)
+            schedulePullRequest(updateRetrievalParams.sendUpdateRequestsInterval)
         }
+    }
+
+    private fun schedulePullRequest(nextRequestIn: Int) {
+        pullRequestSchedule =
+            TimedCallback(Simulator.getCurrentTimestamp() + nextRequestIn) {
+                makePullRequestsRecursive()
+            }
+        Simulator.addCallback(pullRequestSchedule!!)
     }
 
     private fun sendPullRequestsToResponsibleServers() {

@@ -8,7 +8,7 @@ interface Metrics {
 class MetricsCollector(
     val name: String, edges: List<Edge>, servers: List<Server>, updates: List<Simulator.InitialUpdateParams>
 ) {
-    private val links: List<UnidirectionalLink> = (edges + servers).flatMap { it.getLinks() }
+    private val links: List<UnidirectionalLink> = (edges + servers).flatMap { it.getLinks().orEmpty() }
     val updateMetricsCollector = UpdateMetricsCollector(edges, servers, updates)
     val linkMetricsCollector = LinkMetricsCollector(links)
     val nodeMetricsCollector = NodeMetricsCollector(edges + servers)

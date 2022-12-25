@@ -1,3 +1,5 @@
+// todo:
+// rename to artifact or similar
 class Software(val name: String) {
 
     fun updateCompatible(fromVersion: Int, toVersion: Int): Boolean {

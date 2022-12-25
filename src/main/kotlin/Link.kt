@@ -2,6 +2,13 @@
 // or just as two unidirectional links -> maybe should be both possible -> more generic link interface
 // especially how bandwith is consumed should be generic (e.g. seperate bandwiths for each direction or together one)
 
+// todo:
+// think about creating network class which specifies
+// parameters that should be globally equal (maybe like the calculation of the
+// transfer time)
+// nodes, links are components of the network, the network is passed into the simulation
+// also, leave transmission calculation as input param
+
 data class MutableLinkState(
     val isOnline: Boolean
 )
@@ -10,41 +17,42 @@ data class LinkSimParams(
     val bandwidth: Int, val latency: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null
 )
 
-// an sich wird isOnline nicht mehr benötigt, denn links entfernen sich selbst vom node, wenn sie offline gehen
 class UnidirectionalLink(
-    private val simParams: LinkSimParams, private val from: Node, val to: Node, initialLinkState: MutableLinkState
+    private val simParams: LinkSimParams, val to: Node, initialLinkState: MutableLinkState
 ) : OnlineState(initialLinkState.isOnline, simParams.nextOnlineStateChange) {
     private var getNextPackage: (UnidirectionalLink) -> Package? = { _ -> null }
+    private var onTransmissionSuccessful: (Package) -> Unit = { }
     private var currentTransmission: Transmission? = null
-
-    init {
-        if (getOnlineState()) {
-            from.addLink(this)
-        }
-    }
 
     override fun changeOnlineState(value: Boolean) {
         if (getOnlineState() != value) {
             super.changeOnlineState(value)
             println("new link state: $value")
             if (value) {
-                from.addLink(this)
-                sendNext()
+                sendNextPackage()
             } else {
-                from.removeLink(this)
                 currentTransmission?.cancelTransmitting()
             }
         }
         Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
     }
 
+    fun initializeFromParams(
+        getNextPackage: (UnidirectionalLink) -> Package?,
+        onTransmissionSuccessful: (Package) -> Unit
+    ) {
+        this.getNextPackage = getNextPackage
+        this.onTransmissionSuccessful = onTransmissionSuccessful
+    }
+
     fun onTransmissionFinished() {
-        if (currentTransmission != null) {
-            from.removePackage(currentTransmission!!.p)
+        val finishedTransmission = currentTransmission
+        if (finishedTransmission != null) {
+            onTransmissionSuccessful(finishedTransmission.p)
             currentTransmission = null
-            sendNext()
+            sendNextPackage()
         }
-        Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
+        Simulator.metrics?.linkMetricsCollector?.onChangedLinkState(this)
     }
 
     fun transmissionCanceled() {
@@ -64,18 +72,14 @@ class UnidirectionalLink(
             val transmissionTime = size / simParams.bandwidth + simParams.latency * 2
             currentTransmission = SimpleTransmission(nextPackage, transmissionTime, this)
         }
-        Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
+        Simulator.metrics?.linkMetricsCollector?.onChangedLinkState(this)
     }
 
     fun hasUnusedBandwidth(): Boolean {
         return currentTransmission === null
     }
 
-    fun setGetNextPackage(getNext: (UnidirectionalLink) -> Package?) {
-        getNextPackage = getNext
-    }
-
-    private fun sendNext() {
+    private fun sendNextPackage() {
         if (getOnlineState()) {
             val nextPackage = getNextPackage(this)
             if (nextPackage != null) {

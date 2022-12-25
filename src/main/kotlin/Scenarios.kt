@@ -1,5 +1,9 @@
 const val UPDATE_INIT_TIMESTAMP = 5000
 
+// todo:
+// allow configuration of global simulation parameters
+// like requestPackageSize, ...
+
 class Scenarios {
     fun testScenario(): Simulator.SimulationParams {
         // 1 size unit = 1 byte
@@ -141,11 +145,15 @@ private fun generateServerHierarchy(
                     MutableServerState(true)
                 )
                 // TODO: replace with bidirectional
-                UnidirectionalLink(
-                    linkSimParamsAtLevel(currentLevel), parent, childServer, MutableLinkState(true)
+                parent.addLink(
+                    UnidirectionalLink(
+                        linkSimParamsAtLevel(currentLevel), childServer, MutableLinkState(true)
+                    )
                 )
-                UnidirectionalLink(
-                    linkSimParamsAtLevel(currentLevel), childServer, parent, MutableLinkState(true)
+                childServer.addLink(
+                    UnidirectionalLink(
+                        linkSimParamsAtLevel(currentLevel), parent, MutableLinkState(true)
+                    )
                 )
                 serversAtCurrentLevel.add(childServer)
             }
@@ -181,8 +189,8 @@ fun addEdgesToHierarchy(
                     MutableNodeState(false)
                 )
                 edges.add(edge)
-                UnidirectionalLink(linkSimParams, server, edge, MutableLinkState(true))
-                UnidirectionalLink(linkSimParams, edge, server, MutableLinkState(true))
+                server.addLink(UnidirectionalLink(linkSimParams, edge, MutableLinkState(true)))
+                edge.addLink(UnidirectionalLink(linkSimParams, server, MutableLinkState(true)))
             }
         }
     }

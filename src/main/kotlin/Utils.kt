@@ -1,5 +1,9 @@
 import java.util.*
 
+// todo: nochmal gucken wie andere simulatoren die werte abstrahiert haben
+// class ByteValue
+// class InstantValue
+
 fun findShortestPath(from: Node, to: Node): LinkedList<Node>? {
     val shortestPath = findShortestPathRek(from, to, HashSet())
     shortestPath?.poll()
@@ -14,9 +18,9 @@ private fun findShortestPathRek(from: Node, to: Node, alreadyVisited: Set<Node>)
         return list
     }
     val linksAtFromNodeToUnvisited =
-        from.getLinks().filter { !alreadyVisited.contains<Node>(it.to) && it.to.getOnlineState() }
+        from.getLinks()?.filter { !alreadyVisited.contains<Node>(it.to) && it.to.getOnlineState() }
 
-    if (linksAtFromNodeToUnvisited.isEmpty()) {
+    if (linksAtFromNodeToUnvisited.isNullOrEmpty()) {
         return null
     } else {
         var shortestPath: LinkedList<Node>? = null

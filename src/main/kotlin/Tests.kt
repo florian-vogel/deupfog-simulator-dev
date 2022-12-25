@@ -1,3 +1,91 @@
+fun clientServerTestPush(): Simulator.SimulationParams {
+    val software = Software("software")
+    val serverNode = Server(
+        NodeSimParams(10),
+        listOf(),
+        listOf(),
+        UpdateRetrievalParams(),
+        MutableServerState(true)
+    )
+    val edgeNode = Edge(
+        NodeSimParams(10),
+        listOf(serverNode),
+        listOf(SoftwareState(software, 0, 0)),
+        UpdateRetrievalParams(true),
+        MutableNodeState(false)
+    )
+    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
+    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+
+
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+
+    val edges = listOf(edgeNode)
+    val servers = listOf(serverNode)
+    val updates = listOf(Simulator.InitialUpdateParams(update, 100, serverNode))
+
+    return Simulator.SimulationParams(edges, servers, updates)
+}
+
+fun clientServerTestPull(): Simulator.SimulationParams {
+    val software = Software("software")
+    val serverNode = Server(
+        NodeSimParams(10),
+        listOf(),
+        listOf(),
+        UpdateRetrievalParams(),
+        MutableServerState(true)
+    )
+    val edgeNode = Edge(
+        NodeSimParams(10),
+        listOf(serverNode),
+        listOf(SoftwareState(software, 0, 0)),
+        UpdateRetrievalParams(sendUpdateRequestsInterval = 30),
+        MutableNodeState(false)
+    )
+    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
+    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+
+
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+
+    val edges = listOf(edgeNode)
+    val servers = listOf(serverNode)
+    val updates = listOf(Simulator.InitialUpdateParams(update, 100, serverNode))
+
+    return Simulator.SimulationParams(edges, servers, updates)
+}
+
+fun clientServerTestPushStartOffline(): Simulator.SimulationParams {
+    val software = Software("software")
+    val serverNode = Server(
+        NodeSimParams(10),
+        listOf(),
+        listOf(),
+        UpdateRetrievalParams(),
+        MutableServerState(true)
+    )
+    val edgeNode = Edge(
+        NodeSimParams(10, { _, _ -> Simulator.getCurrentTimestamp() + 70 }),
+        listOf(serverNode),
+        listOf(SoftwareState(software, 0, 0)),
+        UpdateRetrievalParams(registerAtServerForUpdates = true),
+        MutableNodeState(true)
+    )
+    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
+    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+
+
+    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+
+    val edges = listOf(edgeNode)
+    val servers = listOf(serverNode)
+    val updates = listOf(Simulator.InitialUpdateParams(update, 100, serverNode))
+
+    return Simulator.SimulationParams(edges, servers, updates)
+}
+
+
 /*
 fun dummyNextOnlineStateChange(timestamp: Int, online: Boolean): Int? {
     return if (!online) 100 else null

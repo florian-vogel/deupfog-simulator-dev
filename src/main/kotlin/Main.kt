@@ -6,8 +6,8 @@ fun main(args: Array<String>) {
     oldStats.deleteRecursively()
 
     val simulator = Simulator()
-    val runSimulationParams = Scenarios().testScenario()
-    //val runSimulationParams = createSimpleTest4()
+    //val runSimulationParams = Scenarios().testScenario()
+    val runSimulationParams = clientServerTestPushStartOffline()
     val simConfigParams = Simulator.SimConfigParams(true, 20000)
     simulator.runSimulation(runSimulationParams, simConfigParams)
 }
