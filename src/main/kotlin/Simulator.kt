@@ -1,3 +1,4 @@
+import Software.SoftwareUpdate
 import java.util.PriorityQueue
 
 class Simulator() {
@@ -59,6 +60,7 @@ class Simulator() {
             MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams)
         )
 
+        /*
         if (simConfigParams.nodesStartOnline) {
             params.edges.forEach {
                 it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
@@ -67,6 +69,7 @@ class Simulator() {
                 it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
             }
         }
+         */
 
         processInitialUpdates(params.updatesParams)
 

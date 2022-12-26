@@ -1,3 +1,7 @@
+import Software.Software
+import Software.SoftwareState
+import Software.SoftwareUpdate
+
 const val UPDATE_INIT_TIMESTAMP = 5000
 
 // todo:
@@ -10,7 +14,7 @@ class Scenarios {
         // 1 temp unit = 1 ms
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 1) { 1 }
-        // val update02 = SoftwareUpdate(software, 2, 1) { 1 }
+        // val update02 = Software.SoftwareUpdate(software, 2, 1) { 1 }
         val edgeGroup = EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             // UpdateRetrievalParams(registerAtServerForUpdates = false, sendUpdateRequestsInterval = 20),

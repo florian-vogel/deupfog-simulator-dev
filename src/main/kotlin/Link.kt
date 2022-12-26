@@ -65,11 +65,7 @@ class UnidirectionalLink(
     fun tryTransmission(nextPackage: Package) {
         if (hasUnusedBandwidth() && getOnlineState()) {
             // TODO: leave transmissionTime calculation as input parameter
-            var size = nextPackage.size
-            if (nextPackage is UpdatePackage) {
-                size += nextPackage.update.size
-            }
-            val transmissionTime = size / simParams.bandwidth + simParams.latency * 2
+            val transmissionTime = nextPackage.getSize() / simParams.bandwidth + simParams.latency * 2
             currentTransmission = SimpleTransmission(nextPackage, transmissionTime, this)
         }
         Simulator.metrics?.linkMetricsCollector?.onChangedLinkState(this)

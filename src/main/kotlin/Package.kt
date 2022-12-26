@@ -1,30 +1,39 @@
-interface Package {
-    val initialPosition: Node
-    val destination: Node
-    val size: Int
+import Software.SoftwareState
+import Software.SoftwareUpdate
+import Software.applyUpdates
+
+abstract class Package(
+    val initialPosition: Node, val destination: Node, private val size: Int
+) {
+    open fun getSize(): Int {
+        return size
+    }
 }
 
-interface UpdateRequest : Package {
-    val softwareStates: List<SoftwareState>
+
+abstract class UpdateRequest(
+    initialPosition: UpdateReceiverNode, destination: Node, size: Int, val softwareStates: List<SoftwareState>
+) : Package(initialPosition, destination, size)
+
+
+class PullLatestUpdatesRequest(
+    size: Int,
+    initialPosition: UpdateReceiverNode,
+    destination: Server,
+    softwareStates: List<SoftwareState>,
+) : UpdateRequest(initialPosition, destination, size, softwareStates)
+
+class RegisterForUpdatesRequest(
+    size: Int,
+    initialPosition: UpdateReceiverNode,
+    destination: Server,
+    softwareStates: List<SoftwareState>,
+) : UpdateRequest(initialPosition, destination, size, softwareStates)
+
+class UpdatePackage(
+    initialPosition: Node, destination: Node, private val size: Int, val update: SoftwareUpdate
+) : Package(initialPosition, destination, size) {
+    override fun getSize(): Int {
+        return size + update.size
+    }
 }
-
-data class PullLatestUpdatesRequest(
-    override val size: Int,
-    override val initialPosition: UpdateReceiverNode,
-    override val destination: Server,
-    override val softwareStates: List<SoftwareState>,
-) : UpdateRequest
-
-data class RegisterForUpdatesRequest(
-    override val size: Int,
-    override val initialPosition: UpdateReceiverNode,
-    override val destination: Server,
-    override val softwareStates: List<SoftwareState>,
-) : UpdateRequest
-
-data class UpdatePackage(
-    override val initialPosition: Node,
-    override val destination: Node,
-    override val size: Int,
-    val update: SoftwareUpdate
-) : Package

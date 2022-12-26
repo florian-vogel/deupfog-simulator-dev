@@ -1,3 +1,7 @@
+import Software.SoftwareState
+import Software.SoftwareUpdate
+import Software.Software
+import Software.applyUpdates
 import java.util.LinkedList
 
 open class MutableNodeState(
@@ -17,7 +21,7 @@ open class Node(
     // => when starting online treat the network as an
     // initial goOnline, but a starting state can still be
     // configured if nessasary
-    private val simParams: NodeSimParams, initialNodeState: MutableNodeState = MutableNodeState(false)
+    private val simParams: NodeSimParams, initialNodeState: MutableNodeState
 ) : OnlineState(initialNodeState.online, simParams.nextOnlineStateChange) {
     private val links: MutableList<UnidirectionalLink> = mutableListOf()
     private val packageQueue = LinkedList<Package>()
@@ -63,7 +67,7 @@ open class Node(
     }
 
     private fun getFreeStorageCapacity(): Int {
-        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.size }
+        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
     }
 
 
@@ -84,7 +88,7 @@ open class Node(
         this.packageQueue.remove(p)
     }
 
-    private fun packageLost(p: Package){
+    private fun packageLost(p: Package) {
         removePackage(p)
         Simulator.metrics!!.nodeMetricsCollector.onPackageLost(this)
     }
@@ -116,7 +120,7 @@ abstract class UpdateReceiverNode(
 
     override fun receive(p: Package) {
         if (!getOnlineState()) return;
-        if (p is UpdatePackage && arrivedAtDestination(p, this)) {
+        if (p is UpdatePackage && p.destination == this) {
             processUpdate(p.update)
         } else {
             addToPackageQueue(p)
@@ -131,17 +135,16 @@ abstract class UpdateReceiverNode(
     override fun changeOnlineState(value: Boolean) {
         val onlineStatusChanged = value != getOnlineState();
         if (onlineStatusChanged) {
+            super.changeOnlineState(value)
             if (value) {
                 initStrategy()
             } else {
                 cancelStrategy()
             }
         }
-        super.changeOnlineState(value)
     }
 
     private fun initStrategy() {
-        if (!getOnlineState()) return
         registerAtServers(listeningFor())
         makePullRequestsRecursive()
     }
@@ -161,6 +164,7 @@ abstract class UpdateReceiverNode(
     override fun addLink(link: UnidirectionalLink) {
         super.addLink(link)
         if (link.getOnlineState()) {
+            // todo: refactor
             if (link.to is Server) {
                 registerAtServer(link.to, listeningFor())
             }
@@ -209,10 +213,9 @@ abstract class UpdateReceiverNode(
     }
 
     private fun schedulePullRequest(nextRequestIn: Int) {
-        pullRequestSchedule =
-            TimedCallback(Simulator.getCurrentTimestamp() + nextRequestIn) {
-                makePullRequestsRecursive()
-            }
+        pullRequestSchedule = TimedCallback(Simulator.getCurrentTimestamp() + nextRequestIn) {
+            makePullRequestsRecursive()
+        }
         Simulator.addCallback(pullRequestSchedule!!)
     }
 
@@ -243,7 +246,7 @@ open class Server(
 ) : UpdateReceiverNode(
     nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
 ) {
-    private var currentState = initialServerState;
+    private var currentState: MutableServerState? = initialServerState;
     private val recentPullNodesRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
 
     override fun receive(p: Package) {
@@ -284,7 +287,7 @@ open class Server(
         super.addLink(link)
         if (link.getOnlineState()) {
             if (link.to is UpdateReceiverNode) {
-                val receiverRegistryEntry = currentState.subscriberRegistry.get(link.to)
+                val receiverRegistryEntry = currentState?.subscriberRegistry?.get(link.to)
                 if (receiverRegistryEntry != null) {
                     initUpdatePackageAndPassToLink(link.to, receiverRegistryEntry)
                 }
@@ -295,7 +298,7 @@ open class Server(
     override fun removeLink(link: UnidirectionalLink) {
         super.removeLink(link)
         // todo: check if other links exist
-        currentState.subscriberRegistry.remove(link.to)
+        currentState?.subscriberRegistry?.remove(link.to)
     }
 
     private fun processRequest(request: UpdateRequest) {
@@ -306,17 +309,17 @@ open class Server(
             // gepushed wird
             // initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
             sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
-                request.initialPosition, request.softwareStates, registerAsSubscriber = false
+                request.initialPosition as UpdateReceiverNode, request.softwareStates, registerAsSubscriber = false
             )
         } else if (request is RegisterForUpdatesRequest) {
             sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
-                request.initialPosition, request.softwareStates, registerAsSubscriber = true
+                request.initialPosition as UpdateReceiverNode, request.softwareStates, registerAsSubscriber = true
             )
         }
     }
 
     private fun initUpdatePackagesToAllSubscribers() {
-        currentState.subscriberRegistry.forEach {
+        currentState?.subscriberRegistry?.forEach {
             initUpdatePackageAndPassToLink(it.key, it.value)
         }
     }
@@ -324,39 +327,41 @@ open class Server(
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
         // todo: updateing update registry might be linked to sendOfUpdatesToSubs
         // show link physically
-        val registry = currentState.updateRegistry[update.type];
+        val registry = currentState?.updateRegistry?.get(update.type);
         if (registry == null) {
             // todo: can I replace this with registry = ...
-            currentState.updateRegistry[update.type] = mutableListOf(update)
+            currentState?.updateRegistry?.set(update.type, mutableListOf(update))
         } else {
             registry.add(update)
         }
     }
 
     private fun getCurrentUpdateRegistryStates(): List<SoftwareState> {
-        val states = mutableListOf<SoftwareState>()
-        currentState.updateRegistry.forEach {
-            val state = SoftwareState(it.key, 0, 0)
-            it.value.sortBy { update -> update.updatesToVersion }
-            it.value.forEach { update -> state.applyUpdate(update) }
-            states.add(state)
+        val updateRegistry = currentState?.updateRegistry?.toList() ?: return emptyList()
+        return updateRegistry.map {
+            applyUpdates(it.first, it.second)
         }
-        return states
     }
 
     private fun getCurrentRecentPullNodesRegistryStates(): List<SoftwareState> {
+        // todo: remove, maybe refactor whole registry approach,
+        // just save where to send to and what to listenFor
+        // don't care about push pull nodes or subscribers
+        if (recentPullNodesRegistry == null) return emptyList();
         return recentPullNodesRegistry.map { it.value }.flatten()
     }
 
     private fun getCurrentSubscriberRegistryStates(): List<SoftwareState> {
-        return currentState.subscriberRegistry.map { it.value }.flatten()
+        val state = currentState ?: return emptyList()
+        return state.subscriberRegistry.map { it.value }.flatten()
     }
 
     private fun initUpdatePackageAndPassToLink(
         target: UpdateReceiverNode, targetSoftwareStates: List<SoftwareState>
     ) {
+        val currentStateNonNull = currentState ?: return
         targetSoftwareStates.map {
-            currentState.updateRegistry[it.type]?.filter { update ->
+            currentStateNonNull.updateRegistry[it.type]?.filter { update ->
                 it.type.updateCompatible(
                     it.versionNumber, update.updatesToVersion
                 )
@@ -374,7 +379,7 @@ open class Server(
         node: UpdateReceiverNode, listeningFor: List<SoftwareState>, registerAsSubscriber: Boolean
     ) {
         if (registerAsSubscriber) {
-            currentState.subscriberRegistry[node] = listeningFor.toMutableList()
+            currentState?.subscriberRegistry?.set(node, listeningFor.toMutableList())
             // TODO: only send those which the server has
             initUpdatePackageAndPassToLink(node, listeningFor)
         } else {

@@ -39,7 +39,3 @@ private fun findShortestPathRek(from: Node, to: Node, alreadyVisited: Set<Node>)
         return shortestPath
     }
 }
-
-fun arrivedAtDestination(p: Package, currentPosition: Node): Boolean {
-    return p.destination == currentPosition
-}

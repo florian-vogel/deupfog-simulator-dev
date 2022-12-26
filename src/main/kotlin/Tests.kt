@@ -1,3 +1,7 @@
+import Software.SoftwareState
+import Software.SoftwareUpdate
+import Software.Software
+
 fun clientServerTestPush(): Simulator.SimulationParams {
     val software = Software("software")
     val serverNode = Server(
@@ -12,7 +16,7 @@ fun clientServerTestPush(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
-        MutableNodeState(false)
+        MutableNodeState(true)
     )
     serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
     edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
@@ -41,7 +45,7 @@ fun clientServerTestPull(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(sendUpdateRequestsInterval = 30),
-        MutableNodeState(false)
+        MutableNodeState(true)
     )
     serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
     edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
@@ -70,7 +74,7 @@ fun clientServerTestPushStartOffline(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(registerAtServerForUpdates = true),
-        MutableNodeState(true)
+        MutableNodeState(false)
     )
     serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
     edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
@@ -100,14 +104,14 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
     val serverNode = Server(
         NodeSimParams(10),
         listOf(),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(),
         MutableServerState(false, null, null)
     )
     val edgeNode = Edge(
         NodeSimParams(10),
         listOf(serverNode),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
         MutableNodeState(false)
     )
@@ -115,7 +119,7 @@ fun createSimpleTestPush(): Simulator.SimulationParams {
     UnidirectionalLink(edgeNode, serverNode, LinkSimParams(0, 0, ::dummyNextOnlineStateChange), MutableLinkState(false))
 
 
-    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+    val update = Software.SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode)
     val servers = listOf(serverNode)
@@ -140,14 +144,14 @@ fun createSimpleTest4(): Simulator.SimulationParams {
     val edgeNode = Edge(
         NodeSimParams(10) { current, online -> current + 30 },
         listOf(serverNode2),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
         MutableNodeState(false)
     )
     val edgeNode2 = Edge(
         NodeSimParams(10) { current, online -> current + 30 },
         listOf(serverNode2),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(true),
         MutableNodeState(false)
     )
@@ -159,8 +163,8 @@ fun createSimpleTest4(): Simulator.SimulationParams {
     UnidirectionalLink(edgeNode2, serverNode2, LinkSimParams(0, 0), MutableLinkState(true))
 
 
-    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
-    val update2 = SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
+    val update = Software.SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+    val update2 = Software.SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode, edgeNode2)
     val servers = listOf(serverNode, serverNode2)
@@ -177,14 +181,14 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
     val serverNode = Server(
         NodeSimParams(10),
         listOf(),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(),
         MutableServerState(false, null, null)
     )
     val edgeNode = Edge(
         NodeSimParams(10),
         listOf(serverNode),
-        listOf(SoftwareState(software, 0, 0)),
+        listOf(Software.SoftwareState(software, 0, 0)),
         UpdateRetrievalParams(false, 60),
         MutableNodeState(false)
     )
@@ -196,8 +200,8 @@ fun createSimpleTestPull(): Simulator.SimulationParams {
     )
 
 
-    val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
-    val update2 = SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
+    val update = Software.SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
+    val update2 = Software.SoftwareUpdate(software, 2, 1) { oldSize -> oldSize + 1 }
 
     val edges = listOf(edgeNode)
     val servers = listOf(serverNode)
