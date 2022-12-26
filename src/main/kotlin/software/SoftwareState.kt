@@ -1,4 +1,4 @@
-package Software
+package software
 
 class SoftwareState(val type: Software, var versionNumber: Int, var size: Int) {
     fun applyUpdate(update: SoftwareUpdate) {

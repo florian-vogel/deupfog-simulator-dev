@@ -1,3 +1,6 @@
+import main.Simulator
+import node.Node
+
 // TODO: think about bidirectional links -> Link Interface needed
 // or just as two unidirectional links -> maybe should be both possible -> more generic link interface
 // especially how bandwith is consumed should be generic (e.g. seperate bandwiths for each direction or together one)

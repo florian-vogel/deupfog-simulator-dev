@@ -1,4 +1,12 @@
-import Software.SoftwareUpdate
+package main
+
+import MetricsCollector
+import TimedCallback
+import UpdateMetricsCollector
+import UpdatePackage
+import node.Edge
+import node.Server
+import software.SoftwareUpdate
 import java.util.PriorityQueue
 
 class Simulator() {
@@ -11,11 +19,11 @@ class Simulator() {
         val simulationName = "Simulation01"
 
         fun addCallback(c: TimedCallback) {
-            this.callbacks.add(c)
+            callbacks.add(c)
         }
 
         fun cancelCallback(c: TimedCallback) {
-            this.callbacks.remove(c)
+            callbacks.remove(c)
         }
 
         fun getCurrentTimestamp(): Int {

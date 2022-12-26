@@ -1,3 +1,5 @@
+import main.Simulator
+
 open class OnlineState(
     private var state: Boolean = false,
     private val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null

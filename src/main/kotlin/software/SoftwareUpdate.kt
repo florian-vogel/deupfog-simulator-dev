@@ -1,4 +1,4 @@
-package Software
+package software
 
 class SoftwareUpdate(
     val type: Software,

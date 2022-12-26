@@ -1,6 +1,8 @@
-import Software.Software
-import Software.SoftwareState
-import Software.SoftwareUpdate
+import main.Simulator
+import node.*
+import software.Software
+import software.SoftwareState
+import software.SoftwareUpdate
 
 const val UPDATE_INIT_TIMESTAMP = 5000
 

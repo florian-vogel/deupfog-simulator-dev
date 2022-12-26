@@ -1,3 +1,6 @@
+import main.Simulator
+import node.Node
+
 interface Transmission {
     val p: Package
     val transmissionTime: Int
@@ -22,7 +25,8 @@ class SimpleTransmission(
     }
 
     override fun completeTransmitting() {
-        via.to.receive(p)
+        val to: Node = via.to
+        to.receive(p)
         via.onTransmissionFinished()
     }
 

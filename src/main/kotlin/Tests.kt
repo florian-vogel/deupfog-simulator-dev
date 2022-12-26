@@ -1,6 +1,8 @@
-import Software.SoftwareState
-import Software.SoftwareUpdate
-import Software.Software
+import main.Simulator
+import node.*
+import software.SoftwareState
+import software.SoftwareUpdate
+import software.Software
 
 fun clientServerTestPush(): Simulator.SimulationParams {
     val software = Software("software")

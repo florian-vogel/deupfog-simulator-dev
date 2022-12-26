@@ -1,6 +1,8 @@
-import Software.SoftwareState
-import Software.SoftwareUpdate
-import Software.applyUpdates
+import node.Node
+import node.Server
+import node.UpdateReceiverNode
+import software.SoftwareState
+import software.SoftwareUpdate
 
 abstract class Package(
     val initialPosition: Node, val destination: Node, private val size: Int

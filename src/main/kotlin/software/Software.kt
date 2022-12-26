@@ -1,4 +1,4 @@
-package Software
+package software
 
 // todo:
 // rename to artifact or similar

@@ -1,3 +1,4 @@
+import node.Node
 import java.util.*
 
 // todo: nochmal gucken wie andere simulatoren die werte abstrahiert haben
