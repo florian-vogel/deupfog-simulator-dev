@@ -1,3 +1,6 @@
+package node
+
+import TimedCallback
 import main.Simulator
 
 open class OnlineState(

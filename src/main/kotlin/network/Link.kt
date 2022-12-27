@@ -1,5 +1,6 @@
 import main.Simulator
 import node.Node
+import node.OnlineState
 
 // TODO: think about bidirectional links -> Link Interface needed
 // or just as two unidirectional links -> maybe should be both possible -> more generic link interface

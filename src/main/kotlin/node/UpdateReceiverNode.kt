@@ -27,10 +27,11 @@ abstract class UpdateReceiverNode(
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState
 ) : Node(nodeSimParams, initialNodeState) {
+    private val currentNodeState = initialNodeState
     private var pullRequestSchedule: TimedCallback? = null
 
-    init {
-        if (initialNodeState.online) {
+    override fun initNode() {
+        if (currentNodeState.online) {
             initStrategy()
         }
     }
@@ -77,17 +78,6 @@ abstract class UpdateReceiverNode(
     private fun cancelStrategy() {
         removePullRequestSchedule()
     }
-
-    override fun addLink(link: UnidirectionalLink) {
-        super.addLink(link)
-        if (link.getOnlineState()) {
-            // todo: refactor
-            if (link.to is Server) {
-                registerAtServer(link.to, listeningFor())
-            }
-        }
-    }
-
 
     open fun listeningFor(): List<SoftwareState> {
         return runningSoftware

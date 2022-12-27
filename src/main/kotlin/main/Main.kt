@@ -8,7 +8,7 @@ fun main(args: Array<String>) {
 
     val simulator = Simulator()
     //val runSimulationParams = Scenarios().testScenario()
-    val runSimulationParams = clientServerTestPushStartOffline()
+    val runSimulationParams = clientServerTestPush()
     val simConfigParams = Simulator.SimConfigParams(true, 20000)
     simulator.runSimulation(runSimulationParams, simConfigParams)
 }

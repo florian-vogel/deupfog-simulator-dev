@@ -68,16 +68,14 @@ class Simulator() {
             MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams)
         )
 
-        /*
         if (simConfigParams.nodesStartOnline) {
             params.edges.forEach {
-                it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+                it.initNode() //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
             }
             params.servers.forEach {
-                it.changeOnlineState(true) //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
+                it.initNode() //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
             }
         }
-         */
 
         processInitialUpdates(params.updatesParams)
 
