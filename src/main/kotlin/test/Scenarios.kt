@@ -1,6 +1,7 @@
-package main
+package test
 
 import LinkSimParams
+import main.Simulator
 import network.*
 import node.*
 import software.Software

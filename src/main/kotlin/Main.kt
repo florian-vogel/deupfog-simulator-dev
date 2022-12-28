@@ -1,5 +1,5 @@
-import main.Scenarios
 import main.Simulator
+import test.Scenarios
 import java.io.File
 
 fun main(args: Array<String>) {
