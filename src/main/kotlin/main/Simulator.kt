@@ -4,12 +4,16 @@ import MetricsCollector
 import TimedCallback
 import UpdateMetricsCollector
 import UpdatePackage
+import network.Network
 import node.Edge
 import node.Server
 import software.SoftwareUpdate
 import java.util.PriorityQueue
 
-class Simulator() {
+class Simulator(
+    private val params: SimulationParams,
+    private val simConfigParams: SimConfigParams
+) {
     companion object {
         private var currentTimestamp: Int = 0
         private val callbacks: PriorityQueue<TimedCallback> = PriorityQueue { c1, c2 ->
@@ -44,39 +48,28 @@ class Simulator() {
     }
 
     data class InitialUpdateParams(
-        val update: SoftwareUpdate, val atInstant: Int, val initialPosition: Server
+        val update: SoftwareUpdate, val atInstant: Int, val initialPosition: List<Server>
     )
 
     data class SimulationParams(
-        val edges: List<Edge>, val servers: List<Server>, val updatesParams: List<InitialUpdateParams>
+        val network: Network, val updatesParams: List<InitialUpdateParams>
     )
 
     // todo: logToConsole and collectMetrics as parameters
     data class SimConfigParams(
-        val nodesStartOnline: Boolean = true,
         val maxSimDuration: Int? = 50000
     )
 
     fun runSimulation(
         // since I specify all network parameters here the topology is static as well as the update schedule
         // todo: following as class params
-        params: SimulationParams,
-        simConfigParams: SimConfigParams
     ) {
         // initialize
         setMetrics(
-            MetricsCollector("simulator metrics", params.edges, params.servers, params.updatesParams)
+            MetricsCollector("simulator metrics", params.network.edges, params.network.servers, params.updatesParams)
         )
 
-        if (simConfigParams.nodesStartOnline) {
-            params.edges.forEach {
-                it.initNode() //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
-            }
-            params.servers.forEach {
-                it.initNode() //; it.getLinks().forEach { link -> link.changeOnlineState(true) }
-            }
-        }
-
+        params.network.initNetwork()
         processInitialUpdates(params.updatesParams)
 
         // main loop
@@ -96,11 +89,18 @@ class Simulator() {
 
     private fun processInitialUpdates(updates: List<InitialUpdateParams>) {
         updates.stream().forEach {
-            val p = UpdatePackage(it.initialPosition, it.initialPosition, 1, it.update)
-            val initUpdateCallback = TimedCallback(it.atInstant) {
-                it.initialPosition.initializeUpdate(p)
+            for (position in it.initialPosition) {
+                val p = UpdatePackage(
+                    position,
+                    position,
+                    it.update.size + params.network.networkConfig.packageOverhead,
+                    it.update
+                )
+                val initUpdateCallback = TimedCallback(it.atInstant) {
+                    position.initializeUpdate(p)
+                }
+                callbacks.add(initUpdateCallback)
             }
-            callbacks.add(initUpdateCallback)
         }
     }
 }

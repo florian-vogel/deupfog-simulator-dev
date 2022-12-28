@@ -11,17 +11,12 @@ import software.SoftwareUpdate
 import software.applyUpdates
 import Package
 
-// todo
-class MutableServerState(
-    online: Boolean,
-) : MutableNodeState(online)
-
 open class Server(
     nodeSimParams: NodeSimParams,
     responsibleServer: List<Server>,
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    initialServerState: MutableServerState
+    initialServerState: MutableNodeState
 ) : UpdateReceiverNode(
     nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
 ) {
@@ -30,9 +25,16 @@ open class Server(
     private val recentPullNodesRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
 
     override fun receive(p: Package) {
-        super.receive(p)
-        if (p is UpdateRequest && p.destination == this) {
-            processRequest(p)
+        if (!getOnlineState()) return
+        if (p.destination == this) {
+            if (p is UpdatePackage) {
+                processUpdate(p.update)
+            }
+            if (p is UpdateRequest) {
+                processRequest(p)
+            }
+        } else {
+            addToPackageQueue(p)
         }
     }
 
@@ -169,7 +171,7 @@ open class Server(
     }
 
     fun initializeUpdate(updatePackage: UpdatePackage) {
-        processUpdate(updatePackage.update)
+        receive(updatePackage)
     }
 }
 

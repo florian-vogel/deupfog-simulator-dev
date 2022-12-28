@@ -3,7 +3,6 @@ package node
 import PullLatestUpdatesRequest
 import RegisterForUpdatesRequest
 import TimedCallback
-import UnidirectionalLink
 import UpdatePackage
 import Package
 import findShortestPath
@@ -15,7 +14,7 @@ data class UpdateRetrievalParams(
     // Push
     val registerAtServerForUpdates: Boolean = false,
     // Pull
-    val sendUpdateRequestsInterval: Int? = null
+    val updateRequestInterval: Int? = null
 )
 
 abstract class UpdateReceiverNode(
@@ -37,7 +36,7 @@ abstract class UpdateReceiverNode(
     }
 
     override fun receive(p: Package) {
-        if (!getOnlineState()) return;
+        if (!getOnlineState()) return
         if ((p is UpdatePackage) && (p.destination == this)) {
             processUpdate(p.update)
         } else {
@@ -51,7 +50,7 @@ abstract class UpdateReceiverNode(
     }
 
     override fun changeOnlineState(value: Boolean) {
-        val onlineStatusChanged = value != getOnlineState();
+        val onlineStatusChanged = value != getOnlineState()
         if (onlineStatusChanged) {
             super.changeOnlineState(value)
             if (value) {
@@ -113,9 +112,9 @@ abstract class UpdateReceiverNode(
     }
 
     private fun makePullRequestsRecursive() {
-        if (updateRetrievalParams.sendUpdateRequestsInterval != null) {
+        if (updateRetrievalParams.updateRequestInterval != null) {
             sendPullRequestsToResponsibleServers()
-            schedulePullRequest(updateRetrievalParams.sendUpdateRequestsInterval)
+            schedulePullRequest(updateRetrievalParams.updateRequestInterval)
         }
     }
 

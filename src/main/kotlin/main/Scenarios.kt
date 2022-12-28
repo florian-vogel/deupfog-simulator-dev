@@ -1,19 +1,18 @@
 package main
 
 import LinkSimParams
-import MutableLinkState
-import UnidirectionalLink
-import main.Simulator
+import network.*
 import node.*
 import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
 
-const val UPDATE_INIT_TIMESTAMP = 5000
+const val UPDATE_INIT_TIMESTAMP = 100
 
 // todo:
 // allow configuration of global simulation parameters
 // like requestPackageSize, ...
+// -> via network config
 
 class Scenarios {
     fun testScenario(): Simulator.SimulationParams {
@@ -21,32 +20,39 @@ class Scenarios {
         // 1 temp unit = 1 ms
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 1) { 1 }
+        val deepestLevel = 1
         // val update02 = Software.SoftwareUpdate(software, 2, 1) { 1 }
-        val edgeGroup = EdgeGroupConfiguration(
-            listOf(SoftwareState(software, 0, 0)),
-            // UpdateRetrievalParams(registerAtServerForUpdates = false, sendUpdateRequestsInterval = 20),
-            UpdateRetrievalParams(registerAtServerForUpdates = true),
-            { NodeSimParams(100) },
-            { LinkSimParams(1, 1) },
-        ) { level ->
-            if (level == 1) {
-                1
-            } else {
-                1
-            }
-        }
 
-        val scenario01Configuration = ScenarioConfiguration(
+        val networkConfig = NetworkConfig(
             1,
-            1,
-            ({ NodeSimParams(100, null, null) }),
-            ({ LinkSimParams(1, 1) }),
-            listOf(update01),
-            listOf(edgeGroup)
+            createPushStrategy(),
+            listOf(software)
         )
-        return generateScenario(scenario01Configuration)
+        val hierarchyConfig = HierarchyConfiguration(
+            deepestLevel,
+            1,
+            { NodeSimParams(10) },
+            { LinkSimParams(1, 1) },
+            listOf(update01)
+        )
+        val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
+            listOf(SoftwareState(software, 0, 0)),
+            createPushStrategy(),
+            { NodeSimParams(10) },
+            { LinkSimParams(1, 1) },
+            { level -> if (level == deepestLevel) 1 else 0 }
+        ))
+        val network = generateHierarchicalNetwork(
+            networkConfig,
+            hierarchyConfig,
+            edgeGroupConfigs
+        )
+        val updateParams =
+            listOf(Simulator.InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers))
+        return Simulator.SimulationParams(network, updateParams)
     }
 
+    /*
     fun scenarioWithTwoUpdates(): Simulator.SimulationParams {
         // 1 size unit = 1 byte
         // 1 temp unit = 1 ms
@@ -79,131 +85,5 @@ class Scenarios {
         )
         return generateScenario(scenario01Configuration)
     }
-
-    data class ScenarioConfiguration(
-        val hierarchyLevel: Int,
-        val serverDegree: Int,
-        val serverSimParamsAtLevel: (level: Int) -> NodeSimParams,
-        val interServerLinkSimParamsAtLevel: (level: Int) -> LinkSimParams,
-        val updates: List<SoftwareUpdate>,
-        val edgeGroups: List<EdgeGroupConfiguration>
-    )
-
-    data class EdgeGroupConfiguration(
-        val runningSoftware: List<SoftwareState>,
-        val updateRetrievalParams: UpdateRetrievalParams,
-        val edgeSimParamsAtLevel: (level: Int) -> NodeSimParams,
-        val serverToEdgeLinkSimParamsAtLevel: (level: Int) -> LinkSimParams,
-        val edgesPerServerAtLevel: (level: Int) -> Int,
-    )
-
-    fun generateScenario(configuration: ScenarioConfiguration): Simulator.SimulationParams {
-        val serverHierarchy = generateServerHierarchy(
-            configuration.hierarchyLevel,
-            configuration.serverDegree,
-            configuration.serverSimParamsAtLevel,
-            configuration.interServerLinkSimParamsAtLevel
-        )
-        val servers = serverHierarchy.values.flatten()
-
-        val edges = mutableListOf<Edge>()
-        for (edgeGroupConfiguration in configuration.edgeGroups) {
-            edges += addEdgesToHierarchy(
-                serverHierarchy,
-                edgeGroupConfiguration.runningSoftware,
-                edgeGroupConfiguration.updateRetrievalParams,
-                edgeGroupConfiguration.edgesPerServerAtLevel,
-                edgeGroupConfiguration.edgeSimParamsAtLevel,
-                edgeGroupConfiguration.serverToEdgeLinkSimParamsAtLevel,
-            )
-        }
-
-        val initialUpdateParams = configuration.updates.map {
-            Simulator.InitialUpdateParams(
-                it, UPDATE_INIT_TIMESTAMP, serverHierarchy[0]!![0] as Server
-            )
-        }
-
-        return Simulator.SimulationParams(
-            edges, servers, initialUpdateParams
-        )
-    }
-}
-
-// todo: ServerHierarchy class, this method in constructor
-private fun generateServerHierarchy(
-    levels: Int,
-    serverDegree: Int,
-    serverSimParamsAtLevel: (level: Int) -> NodeSimParams,
-    linkSimParamsAtLevel: (level: Int) -> LinkSimParams
-): Map<Int, List<Server>> {
-    val serversAtLevel = mutableMapOf<Int, List<Server>>()
-    val rootServer = Server(
-        serverSimParamsAtLevel(0), listOf(), listOf(), UpdateRetrievalParams(), MutableServerState(true)
-    )
-    serversAtLevel[0] = mutableListOf(rootServer)
-
-    for (currentLevel in 1..levels) {
-        val serversAtCurrentLevel = mutableListOf<Server>()
-        val parentServers = serversAtLevel[currentLevel - 1]
-        for (parent in parentServers!!) {
-            for (i in 1..serverDegree) {
-                val childServer = Server(
-                    serverSimParamsAtLevel(currentLevel),
-                    listOf(parent),
-                    listOf(),
-                    UpdateRetrievalParams(registerAtServerForUpdates = true),
-                    MutableServerState(true)
-                )
-                // TODO: replace with bidirectional
-                parent.addLink(
-                    UnidirectionalLink(
-                        linkSimParamsAtLevel(currentLevel), childServer, MutableLinkState(true)
-                    )
-                )
-                childServer.addLink(
-                    UnidirectionalLink(
-                        linkSimParamsAtLevel(currentLevel), parent, MutableLinkState(true)
-                    )
-                )
-                serversAtCurrentLevel.add(childServer)
-            }
-        }
-        serversAtLevel[currentLevel] = serversAtCurrentLevel
-    }
-    return serversAtLevel;
-}
-
-fun addEdgesToHierarchy(
-    serverHierarchy: Map<Int, List<Server>>,
-    initRunningSoftware: List<SoftwareState>,
-    updateRetrievalParams: UpdateRetrievalParams,
-    edgesPerServerAtLevel: (level: Int) -> Int,
-    edgeSimParamsAtLevel: (level: Int) -> NodeSimParams,
-    linkSimParamsAtLevel: (level: Int) -> LinkSimParams,
-): List<Edge> {
-    val edges = mutableListOf<Edge>()
-    for (hierarchyEntry in serverHierarchy) {
-        val level = hierarchyEntry.key
-        val serversAtLevel = hierarchyEntry.value
-        val edgesPerServer = edgesPerServerAtLevel(level)
-        val edgeSimParams = edgeSimParamsAtLevel(level)
-        val linkSimParams = linkSimParamsAtLevel(level)
-        for (server in serversAtLevel) {
-            for (i in 1..edgesPerServer) {
-                val edge = Edge(
-                    edgeSimParams,
-                    listOf(server),
-                    // todo: copy interface, implemented by softwareState, with copy method
-                    initRunningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) },
-                    updateRetrievalParams,
-                    MutableNodeState(false)
-                )
-                edges.add(edge)
-                server.addLink(UnidirectionalLink(linkSimParams, edge, MutableLinkState(true)))
-                edge.addLink(UnidirectionalLink(linkSimParams, server, MutableLinkState(true)))
-            }
-        }
-    }
-    return edges
+     */
 }
