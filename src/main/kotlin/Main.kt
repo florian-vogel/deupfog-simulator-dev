@@ -7,9 +7,8 @@ fun main(args: Array<String>) {
         File("C:\\Users\\Florian Vogel\\Documents\\Uni\\Simulator\\deupfog-simulator-dev\\analysis\\stats-out")
     oldStats.deleteRecursively()
 
-    //val runSimulationParams = Scenarios().testScenario()
-    val runSimulationParams = Scenarios().testScenario02()
+    val simulationParams = Scenarios().testScenario()
     val simConfigParams = Simulator.SimConfigParams(20000)
-    val simulator = Simulator(runSimulationParams, simConfigParams)
+    val simulator = Simulator(simulationParams, simConfigParams)
     simulator.runSimulation()
 }

@@ -26,21 +26,21 @@ abstract class UpdateReceiverNode(
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState
 ) : Node(nodeSimParams, initialNodeState) {
-    private val currentNodeState = initialNodeState
     private var pullRequestSchedule: TimedCallback? = null
 
     override fun initNode() {
-        if (currentNodeState.online) {
+        if (getOnlineState()) {
             initStrategy()
         }
     }
 
     override fun receive(p: Package) {
-        if (!getOnlineState()) return
-        if ((p is UpdatePackage) && (p.destination == this)) {
-            processUpdate(p.update)
-        } else {
-            addToPackageQueue(p)
+        if (getOnlineState()) {
+            if ((p is UpdatePackage) && (p.destination == this)) {
+                processUpdate(p.update)
+            } else {
+                addToPackageQueue(p)
+            }
         }
     }
 
@@ -74,6 +74,17 @@ abstract class UpdateReceiverNode(
         }
     }
 
+    private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
+        if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
+            val requestPackageOverhead = 1
+            val request = RegisterForUpdatesRequest(requestPackageOverhead, this, server, listeningFor)
+            val nextHop = findShortestPath(this, server)?.peek()
+            if (nextHop != null) {
+                receive(request)
+            }
+        }
+    }
+
     private fun cancelStrategy() {
         removePullRequestSchedule()
     }
@@ -90,17 +101,6 @@ abstract class UpdateReceiverNode(
             registerAtServers(listeningFor())
         }
 
-    }
-
-    private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
-        if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
-            val requestPackageOverhead = 1
-            val request = RegisterForUpdatesRequest(requestPackageOverhead, this, server, listeningFor)
-            val nextHop = findShortestPath(this, server)?.peek()
-            if (nextHop != null) {
-                receive(request)
-            }
-        }
     }
 
     private fun removePullRequestSchedule() {
