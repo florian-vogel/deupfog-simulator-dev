@@ -5,37 +5,37 @@ import software.SoftwareState
 import software.SoftwareUpdate
 
 abstract class Package(
-    val initialPosition: Node, val destination: Node, private val size: Int
+    val initialPosition: Node, val destination: Node, private val packageOverhead: Int
 ) {
     open fun getSize(): Int {
-        return size
+        return packageOverhead
     }
 }
 
 
 abstract class UpdateRequest(
-    initialPosition: UpdateReceiverNode, destination: Node, size: Int, val softwareStates: List<SoftwareState>
-) : Package(initialPosition, destination, size)
+    initialPosition: UpdateReceiverNode, destination: Node, packageOverhead: Int, val softwareStates: List<SoftwareState>
+) : Package(initialPosition, destination, packageOverhead)
 
 
 class PullLatestUpdatesRequest(
-    size: Int,
+    packageOverhead: Int,
     initialPosition: UpdateReceiverNode,
     destination: Server,
     softwareStates: List<SoftwareState>,
-) : UpdateRequest(initialPosition, destination, size, softwareStates)
+) : UpdateRequest(initialPosition, destination, packageOverhead, softwareStates)
 
 class RegisterForUpdatesRequest(
-    size: Int,
+    packageOverhead: Int,
     initialPosition: UpdateReceiverNode,
     destination: Server,
     softwareStates: List<SoftwareState>,
-) : UpdateRequest(initialPosition, destination, size, softwareStates)
+) : UpdateRequest(initialPosition, destination, packageOverhead, softwareStates)
 
 class UpdatePackage(
-    initialPosition: Node, destination: Node, private val size: Int, val update: SoftwareUpdate
-) : Package(initialPosition, destination, size) {
+    initialPosition: Node, destination: Node, private val packageOverhead: Int, val update: SoftwareUpdate
+) : Package(initialPosition, destination, packageOverhead) {
     override fun getSize(): Int {
-        return size + update.size
+        return packageOverhead + update.size
     }
 }

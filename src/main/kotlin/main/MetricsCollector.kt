@@ -1,4 +1,6 @@
-import main.Simulator
+package main
+
+import network.UnidirectionalLink
 import node.Edge
 import node.Node
 import node.Server
@@ -13,7 +15,7 @@ interface Metrics {
 class MetricsCollector(
     val name: String, edges: List<Edge>, servers: List<Server>, updates: List<Simulator.InitialUpdateParams>
 ) {
-    private val links: List<UnidirectionalLink> = (edges + servers).flatMap { it.getLinks().orEmpty() }
+    private val links: List<UnidirectionalLink> = (edges + servers).flatMap { it.getOnlineLinks().orEmpty() }
     val updateMetricsCollector = UpdateMetricsCollector(edges, servers, updates)
     val linkMetricsCollector = LinkMetricsCollector(links)
     val nodeMetricsCollector = NodeMetricsCollector(edges + servers)
@@ -171,7 +173,7 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
         override fun toCsv(): List<CsvWritableObject> {
             return listOf(
                 CsvWritableObject("timestamp", timestamp.toString()),
-                //CsvWritableObject("linksFree", linksFree.toString()),
+                //main.CsvWritableObject("linksFree", linksFree.toString()),
                 CsvWritableObject("linksOccupied", linksOccupied.toString()),
                 CsvWritableObject("linksOffline", linksOffline.toString()),
             )
@@ -180,9 +182,9 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
 
     private val linkStateMonitorTimeline = mutableListOf(
         LinkStateMonitor(0, links.count {
-            it.getOnlineState() && it.hasUnusedBandwidth()
+            it.getOnlineState() && it.isTransmitting()
         }, links.count {
-            it.getOnlineState() && !it.hasUnusedBandwidth()
+            it.getOnlineState() && !it.isTransmitting()
         }, links.count {
             !it.getOnlineState()
         })
@@ -191,9 +193,9 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
 
     fun onChangedLinkState(link: UnidirectionalLink) {
         val lastLinkState = linkData[link]?.linkStateTimeline?.peek()?.second
-        val newLinkState: LinkState = if (link.getOnlineState() && link.hasUnusedBandwidth()) {
+        val newLinkState: LinkState = if (link.getOnlineState() && link.isTransmitting()) {
             LinkState.FREE
-        } else if (link.getOnlineState() && !link.hasUnusedBandwidth()) {
+        } else if (link.getOnlineState() && !link.isTransmitting()) {
             LinkState.OCCUPIED
         } else {
             LinkState.OFFLINE
@@ -202,9 +204,9 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
             linkData[link]?.linkStateTimeline?.add(Pair(Simulator.getCurrentTimestamp(), newLinkState))
 
             val newLinkStateMonitor = LinkStateMonitor(Simulator.getCurrentTimestamp(), links.count {
-                it.getOnlineState() && it.hasUnusedBandwidth()
+                it.getOnlineState() && it.isTransmitting()
             }, links.count {
-                it.getOnlineState() && !it.hasUnusedBandwidth()
+                it.getOnlineState() && !it.isTransmitting()
             }, links.count {
                 !it.getOnlineState()
             })

@@ -2,7 +2,7 @@ package node
 
 import PullLatestUpdatesRequest
 import RegisterForUpdatesRequest
-import UnidirectionalLink
+import network.UnidirectionalLink
 import UpdatePackage
 import UpdateRequest
 import software.Software
@@ -10,6 +10,8 @@ import software.SoftwareState
 import software.SoftwareUpdate
 import software.applyUpdates
 import Package
+import network.LinkConfig
+import network.MutableLinkState
 
 open class Server(
     nodeSimParams: NodeSimParams,
@@ -65,40 +67,28 @@ open class Server(
         return oneValueForEachType
     }
 
-    override fun addLink(link: UnidirectionalLink) {
-        super.addLink(link)
-        if (link.getOnlineState()) {
-            if (link.to is UpdateReceiverNode) {
-                val receiverRegistryEntry = subscriberRegistry[link.to]
-                if (receiverRegistryEntry != null) {
-                    initUpdatePackageAndPassToLink(link.to, receiverRegistryEntry)
-                }
-            }
-        }
+    override fun createLink(linkConfig: LinkConfig, to: Node, initialLinkState: MutableLinkState): UnidirectionalLink {
+        val newLink = UnidirectionalLink(linkConfig, this, to, initialLinkState)
+        links.add(newLink)
+        return newLink
     }
 
     override fun removeLink(link: UnidirectionalLink) {
         super.removeLink(link)
-
-        // todo: check if other links exist
-        subscriberRegistry.remove(link.to)
+        val noOtherLinkTo = links.find { it.to == link.to } == null
+        if (noOtherLinkTo) {
+            subscriberRegistry.remove(link.to)
+        }
     }
 
     private fun processRequest(request: UpdateRequest) {
+        initUpdatePackageAndPassToLink(request.initialPosition as UpdateReceiverNode, request.softwareStates)
         if (request is PullLatestUpdatesRequest) {
-            // todo: bei pull keine registrierung, macht nur sinn, wenn es wirklich nur einen server gibt,
-            // sonst kommt das update nie beim sub-server an, da dieser es nicht anfragt
-            // alternativ auch in subscriber registry speichern aber über meta daten steuern, dass kein update
-            // gepushed wird
-            // initUpdatePackageAndPassToLink(request.initialPosition, request.softwareStates)
-            sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
-                request.initialPosition as UpdateReceiverNode, request.softwareStates, registerAsSubscriber = false
-            )
+            recentPullNodesRegistry[request.initialPosition] = request.softwareStates.toMutableList()
         } else if (request is RegisterForUpdatesRequest) {
-            sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
-                request.initialPosition as UpdateReceiverNode, request.softwareStates, registerAsSubscriber = true
-            )
+            subscriberRegistry[request.initialPosition] = request.softwareStates.toMutableList()
         }
+        registerAtServers(listeningFor())
     }
 
     private fun initUpdatePackagesToAllSubscribers() {
@@ -108,8 +98,6 @@ open class Server(
     }
 
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
-        // todo: updateing update registry might be linked to sendOfUpdatesToSubs
-        // show link physically
         val registry = updateRegistry[update.type];
         if (registry == null) {
             // todo: can I replace this with registry = ...
@@ -155,23 +143,9 @@ open class Server(
         }
     }
 
-    private fun sendAvailableUpdatesAndRegisterNodeInLocalRegistry(
-        node: UpdateReceiverNode, listeningFor: List<SoftwareState>, registerAsSubscriber: Boolean
-    ) {
-        if (registerAsSubscriber) {
-            subscriberRegistry[node] = listeningFor.toMutableList()
-            // TODO: only send those which the server has
-            initUpdatePackageAndPassToLink(node, listeningFor)
-        } else {
-            recentPullNodesRegistry[node] = listeningFor.toMutableList()
-            initUpdatePackageAndPassToLink(node, listeningFor)
-        }
-        // TODO: register only for those which server wasn't listening before
-        registerAtServers(listeningFor())
-    }
-
     fun initializeUpdate(updatePackage: UpdatePackage) {
-        receive(updatePackage)
+        //receive(updatePackage)
+        processUpdate(updatePackage.update)
     }
 }
 

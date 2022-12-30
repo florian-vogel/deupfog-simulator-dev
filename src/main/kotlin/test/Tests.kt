@@ -1,12 +1,15 @@
+package test
+
 import main.Simulator
-import network.Network
-import network.NetworkConfig
-import network.createPullStrategy
-import network.createPushStrategy
+import network.*
 import node.*
 import software.SoftwareState
 import software.SoftwareUpdate
 import software.Software
+
+val simpleTransmissionConfig = TransmissionConfig(1) { size, bandwidth, latency ->
+    size / bandwidth + latency * 2
+}
 
 fun clientServerTestPush(): Simulator.SimulationParams {
     val software = Software("software")
@@ -20,8 +23,8 @@ fun clientServerTestPush(): Simulator.SimulationParams {
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
     )
-    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
-    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+    serverNode.createLink(LinkConfig(1, 0, simpleTransmissionConfig), edgeNode, MutableLinkState(true))
+    edgeNode.createLink(LinkConfig(1, 0, simpleTransmissionConfig), serverNode, MutableLinkState(true))
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
     val updates = listOf(Simulator.InitialUpdateParams(update, 100, listOf(serverNode)))
@@ -46,8 +49,8 @@ fun clientServerTestPull(): Simulator.SimulationParams {
         UpdateRetrievalParams(updateRequestInterval = 30),
         MutableNodeState(true)
     )
-    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
-    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+    serverNode.addLink(network.UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, network.MutableLinkState(true)))
+    edgeNode.addLink(network.UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, network.MutableLinkState(true)))
 
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
@@ -75,8 +78,8 @@ fun clientServerTestPushStartOffline(): Simulator.SimulationParams {
         UpdateRetrievalParams(registerAtServerForUpdates = true),
         MutableNodeState(false)
     )
-    serverNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, MutableLinkState(true)))
-    edgeNode.addLink(UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, MutableLinkState(true)))
+    serverNode.addLink(network.UnidirectionalLink(LinkSimParams(1, 0, null), edgeNode, network.MutableLinkState(true)))
+    edgeNode.addLink(network.UnidirectionalLink(LinkSimParams(1, 0, null), serverNode, network.MutableLinkState(true)))
 
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }

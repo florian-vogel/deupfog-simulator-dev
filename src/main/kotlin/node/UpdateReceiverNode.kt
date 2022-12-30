@@ -94,9 +94,8 @@ abstract class UpdateReceiverNode(
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
-            // TODO: leave as input
-            val requestPackageSize = 1
-            val request = RegisterForUpdatesRequest(requestPackageSize, this, server, listeningFor)
+            val requestPackageOverhead = 1
+            val request = RegisterForUpdatesRequest(requestPackageOverhead, this, server, listeningFor)
             val nextHop = findShortestPath(this, server)?.peek()
             if (nextHop != null) {
                 receive(request)
@@ -127,7 +126,8 @@ abstract class UpdateReceiverNode(
 
     private fun sendPullRequestsToResponsibleServers() {
         responsibleServers.forEach {
-            val request = PullLatestUpdatesRequest(1, this, it, listeningFor())
+            val requestPackageOverhead = 1
+            val request = PullLatestUpdatesRequest(requestPackageOverhead, this, it, listeningFor())
             val nextHop = findShortestPath(this, it)?.peek()
             if (nextHop != null) {
                 receive(request)

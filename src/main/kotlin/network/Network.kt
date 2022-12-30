@@ -1,8 +1,5 @@
 package network
 
-import LinkSimParams
-import MutableLinkState
-import UnidirectionalLink
 import node.*
 import software.Software
 import software.SoftwareState
@@ -63,7 +60,7 @@ data class HierarchyConfiguration(
     val deepestLevel: Int,
     val branchingFactor: Int,
     val serverSimParamsAtLevel: (level: Int) -> NodeSimParams,
-    val serverServerLinkSimParamsAtLevel: (level: Int) -> LinkSimParams,
+    val serverServerLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
     val updates: List<SoftwareUpdate>,
 )
 
@@ -71,7 +68,7 @@ data class EdgeGroupConfiguration(
     val runningSoftware: List<SoftwareState>,
     val updateRetrievalParams: UpdateRetrievalParams,
     val edgeSimParamsAtLevel: (level: Int) -> NodeSimParams,
-    val serverEdgeLinkSimParamsAtLevel: (level: Int) -> LinkSimParams,
+    val serverEdgeLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
     val edgesPerServerAtLevel: (level: Int) -> Int,
 )
 
@@ -104,17 +101,13 @@ fun generateServerHierarchy(network: Network, hierarchyConfig: HierarchyConfigur
                 val childServer = network.generateServer(
                     hierarchyConfig.serverSimParamsAtLevel(currentLevel), listOf(parent), listOf()
                 )
-                parent.addLink(
-                    UnidirectionalLink(
-                        hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel),
-                        childServer,
-                        MutableLinkState(true)
-                    )
+                parent.createLink(
+                    hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel),
+                    childServer,
+                    MutableLinkState(true)
                 )
-                childServer.addLink(
-                    UnidirectionalLink(
-                        hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel), parent, MutableLinkState(true)
-                    )
+                childServer.createLink(
+                    hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel), parent, MutableLinkState(true)
                 )
                 serversAtCurrentLevel.add(childServer)
             }
@@ -141,8 +134,8 @@ fun addEdgesToHierarchy(
                     // todo: copy interface, implemented by softwareState, with copy method
                     edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
                 )
-                server.addLink(UnidirectionalLink(linkSimParams, edge, MutableLinkState(true)))
-                edge.addLink(UnidirectionalLink(linkSimParams, server, MutableLinkState(true)))
+                server.createLink(linkSimParams, edge, MutableLinkState(true))
+                edge.createLink(linkSimParams, server, MutableLinkState(true))
             }
         }
     }

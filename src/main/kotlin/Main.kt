@@ -8,7 +8,7 @@ fun main(args: Array<String>) {
     oldStats.deleteRecursively()
 
     //val runSimulationParams = Scenarios().testScenario()
-    val runSimulationParams = Scenarios().testScenario()
+    val runSimulationParams = Scenarios().testScenario02()
     val simConfigParams = Simulator.SimConfigParams(20000)
     val simulator = Simulator(runSimulationParams, simConfigParams)
     simulator.runSimulation()

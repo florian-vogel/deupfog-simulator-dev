@@ -1,36 +1,38 @@
+package network
+
+import TimedCallback
 import main.Simulator
-import node.Node
+import Package
 
-interface Transmission {
-    val p: Package
-    val transmissionTime: Int
-    val via: UnidirectionalLink
+data class TransmissionConfig(
+    val transmissionOverhead: Int,
+    val transmissionTimeCalc: (size: Int, bandwidth: Int, delay: Int) -> Int
+)
 
-    fun startTransmitting()
-    fun completeTransmitting()
-    fun cancelTransmitting()
-}
-
-// TODO: calculate transmission time here
-class SimpleTransmission(
-    override val p: Package, override val transmissionTime: Int, override val via: UnidirectionalLink
-) : Transmission {
-    init {
-        startTransmitting()
+class Transmission(
+    private val transmissionConfig: TransmissionConfig,
+    val p: Package,
+    private val via: UnidirectionalLink
+) {
+    private val transmissionCompleteCallback: TimedCallback? = null
+    fun start() {
+        createTransmissionCompleteCallback()
     }
 
-    override fun startTransmitting() {
-        val callback = TimedCallback(Simulator.getCurrentTimestamp() + transmissionTime) { completeTransmitting() }
+    fun complete() {}
+
+    fun cancel() {
+        if (transmissionCompleteCallback != null)
+            Simulator.cancelCallback(transmissionCompleteCallback)
+    }
+
+    private fun createTransmissionCompleteCallback() {
+        val size = p.getSize() + transmissionConfig.transmissionOverhead
+        val transmissionTime =
+            transmissionConfig.transmissionTimeCalc(size, via.linkConfig.bandwidth, via.linkConfig.latency)
+        val callback = TimedCallback(Simulator.getCurrentTimestamp() + transmissionTime) {
+            this.via.completeTransmission()
+        }
         Simulator.addCallback(callback)
-    }
-
-    override fun completeTransmitting() {
-        val to: Node = via.to
-        to.receive(p)
-        via.onTransmissionFinished()
-    }
-
-    override fun cancelTransmitting() {
-        via.onTransmissionFinished()
     }
 }

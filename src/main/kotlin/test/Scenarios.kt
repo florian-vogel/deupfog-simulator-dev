@@ -1,6 +1,6 @@
 package test
 
-import LinkSimParams
+import network.LinkConfig
 import main.Simulator
 import network.*
 import node.*
@@ -9,11 +9,11 @@ import software.SoftwareState
 import software.SoftwareUpdate
 
 const val UPDATE_INIT_TIMESTAMP = 100
+const val UPDATE_INIT_TIMESTAMP_02 = 150
 
-// todo:
-// allow configuration of global simulation parameters
-// like requestPackageSize, ...
-// -> via network config
+val simpleTransmission = TransmissionConfig(
+    1
+) { size, bandwidth, delay -> size / bandwidth + delay * 2 }
 
 class Scenarios {
     fun testScenario(): Simulator.SimulationParams {
@@ -33,14 +33,14 @@ class Scenarios {
             deepestLevel,
             1,
             { NodeSimParams(10) },
-            { LinkSimParams(1, 1) },
+            { LinkConfig(1, 1, simpleTransmission) },
             listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
             { NodeSimParams(10) },
-            { LinkSimParams(1, 1) },
+            { LinkConfig(1, 1, simpleTransmission) },
             { level -> if (level == deepestLevel) 1 else 0 }
         ))
         val network = generateHierarchicalNetwork(
@@ -53,38 +53,43 @@ class Scenarios {
         return Simulator.SimulationParams(network, updateParams)
     }
 
-    /*
-    fun scenarioWithTwoUpdates(): Simulator.SimulationParams {
+    fun testScenario02(): Simulator.SimulationParams {
         // 1 size unit = 1 byte
         // 1 temp unit = 1 ms
         val software = Software("testSoftware")
-        val update01 = SoftwareUpdate(software, 1, 100000) { 100 }
-        val update02 = SoftwareUpdate(software, 2, 100000) { 100 }
-        val edgeGroup = EdgeGroupConfiguration(
-            listOf(SoftwareState(software, 0, 0)),
-            UpdateRetrievalParams(registerAtServerForUpdates = true),
-            //UpdateRetrievalParams(registerAtServerForUpdates = false, sendUpdateRequestsInterval = 3000),
-            { NodeSimParams(1000000) },
-            { LinkSimParams(1000, 20) },
-        ) { level ->
-            if (level == 6) {
-                3
-            } else if (level == 5) {
-                0
-            } else {
-                0
-            }
-        }
+        val update01 = SoftwareUpdate(software, 1, 1) { 1 }
+        val deepestLevel = 1
+        val update02 = SoftwareUpdate(software, 2, 1) { 1 }
 
-        val scenario01Configuration = ScenarioConfiguration(
-            6,
-            2,
-            ({ NodeSimParams(5000000) }),
-            ({ LinkSimParams(1000, 20) }),
-            listOf(update01, update02),
-            listOf(edgeGroup)
+        val networkConfig = NetworkConfig(
+            1,
+            createPullStrategy(70),
+            listOf(software)
         )
-        return generateScenario(scenario01Configuration)
+        val hierarchyConfig = HierarchyConfiguration(
+            deepestLevel,
+            1,
+            { NodeSimParams(10) },
+            { LinkConfig(1, 1, simpleTransmission) },
+            listOf(update01)
+        )
+        val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
+            listOf(SoftwareState(software, 0, 0)),
+            createPullStrategy(70),
+            { NodeSimParams(10) },
+            { LinkConfig(1, 1, simpleTransmission) },
+            { level -> if (level == deepestLevel) 1 else 0 }
+        ))
+        val network = generateHierarchicalNetwork(
+            networkConfig,
+            hierarchyConfig,
+            edgeGroupConfigs
+        )
+        val updateParams =
+            listOf(
+                Simulator.InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers),
+                Simulator.InitialUpdateParams(update02, UPDATE_INIT_TIMESTAMP_02, network.updateInitializationServers)
+            )
+        return Simulator.SimulationParams(network, updateParams)
     }
-     */
 }
