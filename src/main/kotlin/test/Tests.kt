@@ -7,24 +7,20 @@ import software.SoftwareState
 import software.SoftwareUpdate
 import software.Software
 
-val simpleTransmissionConfig = TransmissionConfig(1) { size, bandwidth, latency ->
-    size / bandwidth + latency * 2
-}
-
 fun clientServerTestPush(): Simulator.SimulationParams {
     val software = Software("software")
-    val networkConfig = NetworkConfig(1, createPushStrategy(), listOf(software))
+    val networkConfig = NetworkConfig(1, createPushStrategy(), listOf(software), simplePackageConfig)
     val network = Network(networkConfig)
     val serverNode = network.generateServer(
-        NodeSimParams(10),
+        NodeConfig(10),
     )
     val edgeNode = network.generateEdge(
-        NodeSimParams(10),
+        NodeConfig(10),
         listOf(serverNode),
         listOf(SoftwareState(software, 0, 0)),
     )
-    serverNode.createLink(LinkConfig(1, 0, simpleTransmissionConfig), edgeNode, MutableLinkState(true))
-    edgeNode.createLink(LinkConfig(1, 0, simpleTransmissionConfig), serverNode, MutableLinkState(true))
+    serverNode.createLink(LinkConfig(1, 0, simpleTransmission), edgeNode, MutableLinkState(true))
+    edgeNode.createLink(LinkConfig(1, 0, simpleTransmission), serverNode, MutableLinkState(true))
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
     val updates = listOf(Simulator.InitialUpdateParams(update, 100, listOf(serverNode)))

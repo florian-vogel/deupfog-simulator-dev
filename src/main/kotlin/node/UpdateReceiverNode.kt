@@ -5,7 +5,6 @@ import RegisterForUpdatesRequest
 import TimedCallback
 import UpdatePackage
 import Package
-import findShortestPath
 import main.Simulator
 import software.SoftwareState
 import software.SoftwareUpdate
@@ -14,18 +13,23 @@ data class UpdateRetrievalParams(
     // Push
     val registerAtServerForUpdates: Boolean = false,
     // Pull
-    val updateRequestInterval: Int? = null
+    val updateRequestInterval: Int? = null,
+)
+
+open class PackageConfig(
+    val registerRequestOverhead: Int,
+    val pullRequestOverhead: Int,
 )
 
 abstract class UpdateReceiverNode(
-    nodeSimParams: NodeSimParams,
+    nodeConfig: NodeConfig,
     private val responsibleServers: List<Server>,
-    // either increase version of registered nodes implicitly in server or send updateReceived notification (updates runningSoftware states) when edge received update
-    // --> currently sending update received notification
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
-    initialNodeState: MutableNodeState
-) : Node(nodeSimParams, initialNodeState) {
+    initialNodeState: MutableNodeState,
+    private val packageConfig: PackageConfig,
+
+    ) : Node(nodeConfig, initialNodeState) {
     private var pullRequestSchedule: TimedCallback? = null
 
     override fun initNode() {
@@ -76,12 +80,9 @@ abstract class UpdateReceiverNode(
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
-            val requestPackageOverhead = 1
-            val request = RegisterForUpdatesRequest(requestPackageOverhead, this, server, listeningFor)
-            val nextHop = findShortestPath(this, server)?.peek()
-            if (nextHop != null) {
-                receive(request)
-            }
+            val packageOverhead = packageConfig.registerRequestOverhead
+            val registerRequest = RegisterForUpdatesRequest(packageOverhead, this, server, listeningFor)
+            receive(registerRequest)
         }
     }
 
@@ -100,7 +101,6 @@ abstract class UpdateReceiverNode(
             targetSoftware.applyUpdate(update)
             registerAtServers(listeningFor())
         }
-
     }
 
     private fun removePullRequestSchedule() {
@@ -126,12 +126,9 @@ abstract class UpdateReceiverNode(
 
     private fun sendPullRequestsToResponsibleServers() {
         responsibleServers.forEach {
-            val requestPackageOverhead = 1
-            val request = PullLatestUpdatesRequest(requestPackageOverhead, this, it, listeningFor())
-            val nextHop = findShortestPath(this, it)?.peek()
-            if (nextHop != null) {
-                receive(request)
-            }
+            val packageOverhead = packageConfig.pullRequestOverhead
+            val request = PullLatestUpdatesRequest(packageOverhead, this, it, listeningFor())
+            receive(request)
         }
     }
 }

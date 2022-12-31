@@ -15,6 +15,10 @@ val simpleTransmission = TransmissionConfig(
     1
 ) { size, bandwidth, delay -> size / bandwidth + delay * 2 }
 
+val simplePackageConfig = ServerPackageConfig(
+    1, 1, 1
+)
+
 class Scenarios {
     fun testScenario(): Simulator.SimulationParams {
         // 1 size unit = 1 byte
@@ -27,19 +31,20 @@ class Scenarios {
         val networkConfig = NetworkConfig(
             1,
             createPushStrategy(),
-            listOf(software)
+            listOf(software),
+            simplePackageConfig
         )
         val hierarchyConfig = HierarchyConfiguration(
             deepestLevel,
             1,
-            { NodeSimParams(10) },
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
-            { NodeSimParams(10) },
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             { level -> if (level == deepestLevel) 1 else 0 }
         ))
@@ -64,19 +69,20 @@ class Scenarios {
         val networkConfig = NetworkConfig(
             1,
             createPullStrategy(70),
-            listOf(software)
+            listOf(software),
+            simplePackageConfig
         )
         val hierarchyConfig = HierarchyConfiguration(
             deepestLevel,
             1,
-            { NodeSimParams(10) },
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPullStrategy(70),
-            { NodeSimParams(10) },
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             { level -> if (level == deepestLevel) 1 else 0 }
         ))

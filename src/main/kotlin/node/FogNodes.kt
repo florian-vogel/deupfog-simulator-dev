@@ -12,15 +12,23 @@ import software.applyUpdates
 import Package
 import network.LinkConfig
 import network.MutableLinkState
+import java.util.ServiceConfigurationError
+
+class ServerPackageConfig(
+    registerRequestOverhead: Int,
+    pullRequestOverhead: Int,
+    val updatePackageOverhead: Int,
+) : PackageConfig(registerRequestOverhead, pullRequestOverhead)
 
 open class Server(
-    nodeSimParams: NodeSimParams,
+    nodeSimParams: NodeConfig,
     responsibleServer: List<Server>,
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    initialServerState: MutableNodeState
+    initialServerState: MutableNodeState,
+    val packageConfig: ServerPackageConfig
 ) : UpdateReceiverNode(
-    nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState
+    nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState, packageConfig
 ) {
     private val subscriberRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
     private val updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>> = mutableMapOf()
@@ -137,7 +145,7 @@ open class Server(
         }.forEach {
             if (it != null) {
                 receive(
-                    UpdatePackage(this, target, it.size, it)
+                    UpdatePackage(this, target, packageConfig.updatePackageOverhead, it)
                 )
             }
         }
@@ -150,11 +158,12 @@ open class Server(
 }
 
 class Edge(
-    nodeSimParams: NodeSimParams,
+    nodeSimParams: NodeConfig,
     responsibleUpdateServer: List<Server>,
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
-    initialNodeState: MutableNodeState
+    initialNodeState: MutableNodeState,
+    packageConfig: PackageConfig
 ) : UpdateReceiverNode(
-    nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState
+    nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState, packageConfig
 ) {}

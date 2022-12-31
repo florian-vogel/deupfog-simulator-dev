@@ -108,9 +108,9 @@ class UpdateMetricsCollector(
 
     class TimestampToCount(private val timestamp: Int, val count: Int) : CsvWritable {
 
-        override fun toCsv(): List<CsvWritableObject> {
+        override fun toCsv(): List<ColumnValue> {
             return listOf(
-                CsvWritableObject("timestamp", timestamp.toString()), CsvWritableObject("count", count.toString())
+                ColumnValue("timestamp", timestamp.toString()), ColumnValue("count", count.toString())
             )
         }
     }
@@ -170,12 +170,12 @@ class LinkMetricsCollector(private val links: List<UnidirectionalLink>) : Metric
         val timestamp: Int, val linksFree: Int, val linksOccupied: Int, val linksOffline: Int
     ) : CsvWritable {
 
-        override fun toCsv(): List<CsvWritableObject> {
+        override fun toCsv(): List<ColumnValue> {
             return listOf(
-                CsvWritableObject("timestamp", timestamp.toString()),
+                ColumnValue("timestamp", timestamp.toString()),
                 //main.CsvWritableObject("linksFree", linksFree.toString()),
-                CsvWritableObject("linksOccupied", linksOccupied.toString()),
-                CsvWritableObject("linksOffline", linksOffline.toString()),
+                ColumnValue("linksOccupied", linksOccupied.toString()),
+                ColumnValue("linksOffline", linksOffline.toString()),
             )
         }
     }
@@ -262,11 +262,11 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
         private val nodesOffline: Int,
     ) : CsvWritable {
 
-        override fun toCsv(): List<CsvWritableObject> {
+        override fun toCsv(): List<ColumnValue> {
             return listOf(
-                CsvWritableObject("timestamp", timestamp.toString()),
-                CsvWritableObject("nodesOnline", nodesOnline.toString()),
-                CsvWritableObject("nodesOffline", nodesOffline.toString()),
+                ColumnValue("timestamp", timestamp.toString()),
+                ColumnValue("nodesOnline", nodesOnline.toString()),
+                ColumnValue("nodesOffline", nodesOffline.toString()),
             )
         }
     }
@@ -322,9 +322,9 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
     }
 
     class PackageLostTimestamp(val timestamp: Int) : CsvWritable {
-        override fun toCsv(): List<CsvWritableObject> {
+        override fun toCsv(): List<ColumnValue> {
             return listOf(
-                CsvWritableObject("timestamp", timestamp.toString())
+                ColumnValue("timestamp", timestamp.toString())
             )
         }
     }
@@ -342,12 +342,12 @@ class NodeMetricsCollector(val nodes: List<Node>) : Metrics {
     }
 }
 
-data class CsvWritableObject(
+data class ColumnValue(
     val columnName: String, val valueAsString: String
 )
 
 interface CsvWritable {
-    fun toCsv(): List<CsvWritableObject>
+    fun toCsv(): List<ColumnValue>
 }
 
 fun <T : CsvWritable> writeCsv(data: List<T>, filePath: String, deleteIfExists: Boolean = false) {

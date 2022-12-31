@@ -3,26 +3,26 @@ package node
 import network.LinkConfig
 import network.MutableLinkState
 import network.UnidirectionalLink
-import findShortestPath
 import java.util.LinkedList
 import Package
 import main.Simulator
+import java.util.Queue
 
 open class MutableNodeState(
     val online: Boolean,
 )
 
-open class NodeSimParams(
+open class NodeConfig(
     val storageCapacity: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
     // todo
     val calculateProcessingTime: ((p: Package) -> Int)? = null
 )
 
 open class Node(
-    private val simParams: NodeSimParams, initialNodeState: MutableNodeState
+    private val simParams: NodeConfig, initialNodeState: MutableNodeState
 ) : OnlineState(initialNodeState.online, simParams.nextOnlineStateChange) {
     protected val links: MutableList<UnidirectionalLink> = mutableListOf()
-    private val packageQueue = LinkedList<Package>()
+    private val packageQueue: Queue<Package> = LinkedList()
 
     open fun initNode() {}
 
@@ -61,10 +61,7 @@ open class Node(
 
     protected fun addToPackageQueue(p: Package) {
         this.packageQueue.add(p)
-        val nextHop = findShortestPath(this, p.destination)?.firstOrNull()
-        if (nextHop != null) {
-            links.find { it.to == nextHop }?.startTransmission(p)
-        }
+        links.find { it.to == p.destination }?.startTransmission(p)
     }
 
     private fun getFreeStorageCapacity(): Int {
@@ -73,17 +70,23 @@ open class Node(
 
 
     fun getNextPackage(link: UnidirectionalLink): Package? {
+        return packageQueue.find { it.destination == link.to }
+    }
+
+    fun removePackagesWithoutPossibleRoute() {
         val queueCopy = packageQueue.toList()
         queueCopy.forEach {
-            val nextHop = findShortestPath(this, it.destination)?.firstOrNull()
-            if (nextHop == null) {
+            val noOnlineLink =
+                links.find { link -> link.to == it.destination && link.getOnlineState() } == null
+            if (noOnlineLink) {
                 removePackage(it, true)
-            } else if (nextHop == link.to) {
-                return it
             }
         }
-        return null
     }
+
+    // todo:
+    // call when we notice that a node is offline (?)
+    fun removePackagesToNode(){}
 
     fun removePackage(p: Package, lost: Boolean = false) {
         this.packageQueue.remove(p)

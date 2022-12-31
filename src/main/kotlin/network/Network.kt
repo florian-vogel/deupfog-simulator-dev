@@ -11,7 +11,8 @@ val createPullStrategy = { interval: Int -> UpdateRetrievalParams(updateRequestI
 data class NetworkConfig(
     val packageOverhead: Int,
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,
-    val softwareTypes: List<Software> = listOf()
+    val softwareTypes: List<Software> = listOf(),
+    val defaultPackageConfig: ServerPackageConfig,
 )
 
 class Network(val networkConfig: NetworkConfig) {
@@ -20,27 +21,43 @@ class Network(val networkConfig: NetworkConfig) {
     val updateInitializationServers = mutableListOf<Server>()
 
     fun generateEdge(
-        nodeSimParams: NodeSimParams,
+        nodeSimParams: NodeConfig,
         responsibleUpdateServer: List<Server>,
         runningSoftware: List<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) },
         updateRetrievalParams: UpdateRetrievalParams = networkConfig.defaultUpdateRetrievalParams,
-        initialNodeState: MutableNodeState = MutableNodeState(true)
+        initialNodeState: MutableNodeState = MutableNodeState(true),
+        packageConfig: PackageConfig = networkConfig.defaultPackageConfig
     ): Edge {
         val newEdge =
-            Edge(nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState)
+            Edge(
+                nodeSimParams,
+                responsibleUpdateServer,
+                runningSoftware,
+                updateRetrievalParams,
+                initialNodeState,
+                packageConfig
+            )
         edges.add(newEdge)
         return newEdge
     }
 
     fun generateServer(
-        nodeSimParams: NodeSimParams,
+        nodeSimParams: NodeConfig,
         responsibleUpdateServer: List<Server> = emptyList(),
         runningSoftware: List<SoftwareState> = emptyList(),
         updateRetrievalParams: UpdateRetrievalParams = createPushStrategy(),
-        initialNodeState: MutableNodeState = MutableNodeState(true)
+        initialNodeState: MutableNodeState = MutableNodeState(true),
+        packageConfig: ServerPackageConfig = networkConfig.defaultPackageConfig
     ): Server {
         val newServer =
-            Server(nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState)
+            Server(
+                nodeSimParams,
+                responsibleUpdateServer,
+                runningSoftware,
+                updateRetrievalParams,
+                initialNodeState,
+                packageConfig
+            )
         servers.add(newServer)
         return newServer
     }
@@ -59,7 +76,7 @@ class Network(val networkConfig: NetworkConfig) {
 data class HierarchyConfiguration(
     val deepestLevel: Int,
     val branchingFactor: Int,
-    val serverSimParamsAtLevel: (level: Int) -> NodeSimParams,
+    val serverSimParamsAtLevel: (level: Int) -> NodeConfig,
     val serverServerLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
     val updates: List<SoftwareUpdate>,
 )
@@ -67,7 +84,7 @@ data class HierarchyConfiguration(
 data class EdgeGroupConfiguration(
     val runningSoftware: List<SoftwareState>,
     val updateRetrievalParams: UpdateRetrievalParams,
-    val edgeSimParamsAtLevel: (level: Int) -> NodeSimParams,
+    val edgeSimParamsAtLevel: (level: Int) -> NodeConfig,
     val serverEdgeLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
     val edgesPerServerAtLevel: (level: Int) -> Int,
 )
