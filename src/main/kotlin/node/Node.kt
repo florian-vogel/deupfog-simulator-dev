@@ -5,7 +5,7 @@ import network.MutableLinkState
 import network.UnidirectionalLink
 import java.util.LinkedList
 import Package
-import main.Simulator
+import simulator.Simulator
 import java.util.Queue
 
 open class MutableNodeState(
@@ -33,11 +33,6 @@ open class Node(
         }
     }
 
-    override fun changeOnlineState(value: Boolean) {
-        super.changeOnlineState(value)
-        Simulator.metrics?.nodeMetricsCollector?.onNodeStateChanged(this)
-    }
-
     open fun createLink(linkConfig: LinkConfig, to: Node, initialLinkState: MutableLinkState): UnidirectionalLink {
         val newLink = UnidirectionalLink(linkConfig, this, to, initialLinkState)
         links.add(newLink)
@@ -59,40 +54,40 @@ open class Node(
         return links.find { it.to == node && it.getOnlineState() }
     }
 
-    protected fun addToPackageQueue(p: Package) {
-        this.packageQueue.add(p)
-        links.find { it.to == p.destination }?.startTransmission(p)
-    }
-
-    private fun getFreeStorageCapacity(): Int {
-        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
-    }
-
-
     fun getNextPackage(link: UnidirectionalLink): Package? {
         return packageQueue.find { it.destination == link.to }
     }
 
-    fun removePackagesWithoutPossibleRoute() {
+    fun checkAndRemovePackagesWithoutRoutingOptions() {
         val queueCopy = packageQueue.toList()
         queueCopy.forEach {
             val noOnlineLink =
                 links.find { link -> link.to == it.destination && link.getOnlineState() } == null
-            if (noOnlineLink) {
+            val destinationOffline = !it.destination.getOnlineState()
+            if (noOnlineLink || destinationOffline) {
                 removePackage(it, true)
             }
         }
     }
 
-    // todo:
-    // call when we notice that a node is offline (?)
-    fun removePackagesToNode(){}
-
     fun removePackage(p: Package, lost: Boolean = false) {
         this.packageQueue.remove(p)
         if (lost) {
-            Simulator.metrics!!.nodeMetricsCollector.onPackageLost(this)
+            Simulator.getMetrics()?.packageLossMetricsCollector?.onPackageLost()
         }
+    }
+
+    protected fun addToPackageQueue(p: Package) {
+        if (this.getFreeStorageCapacity() > p.getSize()) {
+            this.packageQueue.add(p)
+            links.find { it.to == p.destination }?.startTransmission(p)
+        } else {
+            Simulator.getMetrics()?.packageLossMetricsCollector?.onPackageLost()
+        }
+    }
+
+    private fun getFreeStorageCapacity(): Int {
+        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
     }
 }
 

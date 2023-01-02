@@ -1,15 +1,17 @@
 package test
 
-import main.Simulator
+import simulator.Simulator
 import network.*
 import node.*
+import simulator.InitialUpdateParams
+import simulator.SimulationSetup
 import software.SoftwareState
 import software.SoftwareUpdate
 import software.Software
 
-fun clientServerTestPush(): Simulator.SimulationParams {
+fun clientServerTestPush(): SimulationSetup{
     val software = Software("software")
-    val networkConfig = NetworkConfig(1, createPushStrategy(), listOf(software), simplePackageConfig)
+    val networkConfig = NetworkConfig(createPushStrategy(), listOf(software), simplePackageConfig)
     val network = Network(networkConfig)
     val serverNode = network.generateServer(
         NodeConfig(10),
@@ -23,9 +25,9 @@ fun clientServerTestPush(): Simulator.SimulationParams {
     edgeNode.createLink(LinkConfig(1, 0, simpleTransmission), serverNode, MutableLinkState(true))
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
-    val updates = listOf(Simulator.InitialUpdateParams(update, 100, listOf(serverNode)))
+    val updates = listOf(InitialUpdateParams(update, 100, listOf(serverNode)))
 
-    return Simulator.SimulationParams(network, updates)
+    return SimulationSetup(network, updates)
 }
 
 /*

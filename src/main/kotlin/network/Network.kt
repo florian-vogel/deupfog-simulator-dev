@@ -9,7 +9,6 @@ val createPushStrategy = { UpdateRetrievalParams(registerAtServerForUpdates = tr
 val createPullStrategy = { interval: Int -> UpdateRetrievalParams(updateRequestInterval = interval) }
 
 data class NetworkConfig(
-    val packageOverhead: Int,
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,
     val softwareTypes: List<Software> = listOf(),
     val defaultPackageConfig: ServerPackageConfig,

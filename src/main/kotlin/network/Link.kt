@@ -1,13 +1,9 @@
 package network
 
-import main.Simulator
+import simulator.Simulator
 import node.Node
 import node.OnlineState
 import Package
-
-// TODO: think about bidirectional links -> Link Interface needed
-// or just as two unidirectional links -> maybe should be both possible -> more generic link interface
-// especially how bandwith is consumed should be generic (e.g. seperate bandwiths for each direction or together one)
 
 data class MutableLinkState(
     val isOnline: Boolean
@@ -32,19 +28,21 @@ class UnidirectionalLink(
                 sendNextPackage()
             } else {
                 cancelTransmission()
+                from.checkAndRemovePackagesWithoutRoutingOptions()
             }
         }
-        Simulator.metrics!!.linkMetricsCollector.onChangedLinkState(this)
     }
 
     fun startTransmission(nextPackage: Package) {
-        if (!isTransmitting() && getOnlineState()) {
-            val newTransmission =
-                Transmission(linkConfig.transmissionConfig, nextPackage, this)
+        if (!isTransmitting() && getOnlineState() && nextPackage.destination.getOnlineState()) {
+            val newTransmission = Transmission(linkConfig.transmissionConfig, nextPackage, this)
             newTransmission.start()
             currentTransmission = newTransmission
+            Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkOccupied(linkConfig.bandwidth)
         }
-        Simulator.metrics?.linkMetricsCollector?.onChangedLinkState(this)
+        else if (!nextPackage.destination.getOnlineState()){
+            from.checkAndRemovePackagesWithoutRoutingOptions()
+        }
     }
 
     fun completeTransmission() {
@@ -56,7 +54,7 @@ class UnidirectionalLink(
             currentTransmission = null
             sendNextPackage()
         }
-        Simulator.metrics?.linkMetricsCollector?.onChangedLinkState(this)
+        Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkFreedUp(linkConfig.bandwidth)
     }
 
     private fun cancelTransmission() {
@@ -66,7 +64,6 @@ class UnidirectionalLink(
             currentTransmission = null
             sendNextPackage()
         }
-        // note: package is not removed from node -> send will be retried, maybe with different link
     }
 
     fun isTransmitting(): Boolean {

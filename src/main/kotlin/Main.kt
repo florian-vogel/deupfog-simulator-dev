@@ -1,14 +1,15 @@
-import main.Simulator
+import simulator.Simulator
 import test.Scenarios
 import java.io.File
 
 fun main(args: Array<String>) {
+    // todo
+    // make path relative
     val oldStats =
         File("C:\\Users\\Florian Vogel\\Documents\\Uni\\Simulator\\deupfog-simulator-dev\\analysis\\stats-out")
     oldStats.deleteRecursively()
 
-    val simulationParams = Scenarios().testScenario()
-    val simConfigParams = Simulator.SimConfigParams(20000)
-    val simulator = Simulator(simulationParams, simConfigParams)
+    val simulationSetup = Scenarios().testScenario()
+    val simulator = Simulator(simulationSetup)
     simulator.runSimulation()
 }

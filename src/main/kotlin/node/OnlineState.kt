@@ -1,7 +1,7 @@
 package node
 
 import TimedCallback
-import main.Simulator
+import simulator.Simulator
 
 open class OnlineState(
     private var state: Boolean = false,

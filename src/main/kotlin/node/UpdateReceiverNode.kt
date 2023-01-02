@@ -5,7 +5,7 @@ import RegisterForUpdatesRequest
 import TimedCallback
 import UpdatePackage
 import Package
-import main.Simulator
+import simulator.Simulator
 import software.SoftwareState
 import software.SoftwareUpdate
 
@@ -23,13 +23,13 @@ open class PackageConfig(
 
 abstract class UpdateReceiverNode(
     nodeConfig: NodeConfig,
-    private val responsibleServers: List<Server>,
+    private val assignedServers: List<Server>,
     private val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState,
     private val packageConfig: PackageConfig,
+) : Node(nodeConfig, initialNodeState) {
 
-    ) : Node(nodeConfig, initialNodeState) {
     private var pullRequestSchedule: TimedCallback? = null
 
     override fun initNode() {
@@ -50,7 +50,7 @@ abstract class UpdateReceiverNode(
 
     open fun processUpdate(update: SoftwareUpdate) {
         updateRunningSoftware(update)
-        Simulator.getUpdateMetrics()?.onArrive(update, this)
+        Simulator.getMetrics()?.updateMetricsCollector?.onArrive(update, this)
     }
 
     override fun changeOnlineState(value: Boolean) {
@@ -72,7 +72,7 @@ abstract class UpdateReceiverNode(
 
     protected fun registerAtServers(listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates) {
-            responsibleServers.forEach {
+            assignedServers.forEach {
                 registerAtServer(it, listeningFor)
             }
         }
@@ -125,7 +125,7 @@ abstract class UpdateReceiverNode(
     }
 
     private fun sendPullRequestsToResponsibleServers() {
-        responsibleServers.forEach {
+        assignedServers.forEach {
             val packageOverhead = packageConfig.pullRequestOverhead
             val request = PullLatestUpdatesRequest(packageOverhead, this, it, listeningFor())
             receive(request)
