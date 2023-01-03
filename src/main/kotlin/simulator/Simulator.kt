@@ -13,7 +13,6 @@ data class InitialUpdateParams(
 )
 
 data class SimulatorConfig(
-    val simulationName: String,
     val maxSimDuration: Int?,
     val printConsoleMetrics: Boolean = true,
     val writeCsvMetrics: Boolean = true,
@@ -25,11 +24,10 @@ data class SimulationSetup(
 )
 
 val defaultSimulatorConfig = SimulatorConfig(
-    "TestSimulation",
     100000,
 )
 
-val generateCsvOutDirPath = { simName: String -> "./analysis/stats-out/${simName}" }
+const val csvOutDirPath = "./metrics/csv_data"
 
 class Simulator(
     private val setup: SimulationSetup,
@@ -92,7 +90,7 @@ class Simulator(
             metrics?.printSummaryToConsole()
         }
         if (config.writeCsvMetrics) {
-            metrics?.writeMetricsToCsv(generateCsvOutDirPath(config.simulationName))
+            metrics?.writeMetricsToCsv(csvOutDirPath)
         }
     }
 

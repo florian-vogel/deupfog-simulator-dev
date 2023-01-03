@@ -28,7 +28,7 @@ class PackageLossMetricsCollector() : Metrics {
     }
 
     private fun writePackageLossTimelineToCsv(resourceUsageMetricsPath: String) {
-        val path = "$resourceUsageMetricsPath/packageLostTimeline.csv"
+        val path = "$resourceUsageMetricsPath/packageLossTimeline.csv"
         writeCsv(packageLossTimeline.toList(), path)
     }
 }

@@ -10,31 +10,11 @@ class ResourcesUsageMetricsCollector() : Metrics {
     private var successfulDataSendInTotal: Int = 0
 
     fun onLinkOccupied(linkBandwidth: Int) {
-        val latestBandwidth = bandwidthUsageTimeline.lastOrNull()?.value ?: 0
-        val newBandwidth = latestBandwidth + linkBandwidth
-        val latestValueAtCurrentTimestamp =
-            bandwidthUsageTimeline.lastOrNull()?.timestamp == Simulator.getCurrentTimestamp()
-        if (latestValueAtCurrentTimestamp) {
-            bandwidthUsageTimeline.lastOrNull()?.value = newBandwidth
-        } else {
-            bandwidthUsageTimeline.add(
-                TimestampToInt(Simulator.getCurrentTimestamp(), newBandwidth)
-            )
-        }
+        addBandwidthUsageTimelineMetric(linkBandwidth)
     }
 
     fun onLinkFreedUp(linkBandwidth: Int) {
-        val latestBandwidth = bandwidthUsageTimeline.lastOrNull()?.value ?: 0
-        val newBandwidth = latestBandwidth - linkBandwidth
-        val latestValueAtCurrentTimestamp =
-            bandwidthUsageTimeline.lastOrNull()?.timestamp == Simulator.getCurrentTimestamp()
-        if (latestValueAtCurrentTimestamp) {
-            bandwidthUsageTimeline.lastOrNull()?.value = newBandwidth
-        } else {
-            bandwidthUsageTimeline.add(
-                TimestampToInt(Simulator.getCurrentTimestamp(), newBandwidth)
-            )
-        }
+        addBandwidthUsageTimelineMetric(-linkBandwidth)
     }
 
     fun packageArrivedSuccessfully(size: Int) {
@@ -54,13 +34,25 @@ class ResourcesUsageMetricsCollector() : Metrics {
 
     private fun writeBandwidthUsageTimelineToCsv(resourceUsageMetricsPath: String) {
         val path = "$resourceUsageMetricsPath/bandwidthUsageTimeline.csv"
-        val timestampToBandwidthUsage = mutableListOf<TimestampToInt>()
-        bandwidthUsageTimeline.groupBy { v -> v.timestamp }.forEach { (key, value) ->
-            val latest = timestampToBandwidthUsage.lastOrNull()
-            // todo
-            // groupby mit count hier falsch
-            timestampToBandwidthUsage.add(TimestampToInt(key, latest?.value?.plus(value.count()) ?: value.count()))
+        writeCsv(bandwidthUsageTimeline.toList(), path)
+    }
+
+    private fun addBandwidthUsageTimelineMetric(valueChange: Int) {
+        val latestValue = bandwidthUsageTimeline.lastOrNull()
+        if (latestValue != null && latestValue.timestamp < Simulator.getCurrentTimestamp()) {
+            bandwidthUsageTimeline.add(TimestampToInt(Simulator.getCurrentTimestamp() - 1, latestValue.value))
         }
-        writeCsv(timestampToBandwidthUsage, path)
+
+        val latestBandwidthMetric = latestValue?.value ?: 0
+        val currentBandwidth = latestBandwidthMetric + valueChange
+        val duplicateValueAtTimestamp =
+            latestValue?.timestamp == Simulator.getCurrentTimestamp()
+        if (duplicateValueAtTimestamp) {
+            latestValue?.value = currentBandwidth
+        } else {
+            bandwidthUsageTimeline.add(
+                TimestampToInt(Simulator.getCurrentTimestamp(), currentBandwidth)
+            )
+        }
     }
 }

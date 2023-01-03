@@ -27,7 +27,7 @@ class Scenarios {
         // 1 temp unit = 1 ms
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 1) { 1 }
-        val deepestLevel = 1
+        val deepestLevel = 2
         // val update02 = Software.SoftwareUpdate(software, 2, 1) { 1 }
 
         val networkConfig = NetworkConfig(
@@ -37,15 +37,15 @@ class Scenarios {
         )
         val hierarchyConfig = HierarchyConfiguration(
             deepestLevel,
-            1,
-            { NodeConfig(2) },
+            2,
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
-            { NodeConfig(2) },
+            { NodeConfig(10) },
             { LinkConfig(1, 1, simpleTransmission) },
             { level -> if (level == deepestLevel) 1 else 0 }
         ))

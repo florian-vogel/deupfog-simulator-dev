@@ -66,7 +66,7 @@ class UnidirectionalLink(
         }
     }
 
-    fun isTransmitting(): Boolean {
+    private fun isTransmitting(): Boolean {
         return currentTransmission != null
     }
 
