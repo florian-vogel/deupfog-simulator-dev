@@ -8,13 +8,12 @@ import Package
 import simulator.Simulator
 import software.SoftwareState
 import software.SoftwareUpdate
-import java.util.*
 
 data class UpdateRetrievalParams(
     // Push
     val registerAtServerForUpdates: Boolean = false,
     // Pull
-    val updateRequestInterval: Int? = null,
+    val chooseNextUpdateRequestInterval: (() -> Int)? = null,
 )
 
 open class PackagesConfig(
@@ -93,7 +92,8 @@ abstract class UpdateReceiverNode(
     }
 
     open fun listeningFor(): List<SoftwareState> {
-        return runningSoftware
+        val copy = runningSoftware
+        return copy.map { SoftwareState(it.type, it.versionNumber, it.size) }
     }
 
 
@@ -113,9 +113,10 @@ abstract class UpdateReceiverNode(
     }
 
     private fun makePullRequestsRecursive() {
-        if (updateRetrievalParams.updateRequestInterval != null) {
+        val chooseNextUpdateRequestInterval = updateRetrievalParams.chooseNextUpdateRequestInterval;
+        if (chooseNextUpdateRequestInterval != null) {
             sendPullRequestsToResponsibleServers()
-            schedulePullRequest(updateRetrievalParams.updateRequestInterval)
+            schedulePullRequest(chooseNextUpdateRequestInterval())
         }
     }
 

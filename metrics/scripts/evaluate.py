@@ -12,8 +12,6 @@ package_loss_metrics_path = r'/packageLossMetrics'
 generate_metrics = {
     'update': True,
     'resources_usage': True,
-    # todo
-    'package_loss': False
 }
 rel_output_path = r'./../graphs'
 rel_csv_data_path = r'./../csv_data'
@@ -25,16 +23,12 @@ def main():
     os.mkdir(rel_output_path)
     os.mkdir(rel_output_path + update_metrics_path)
     os.mkdir(rel_output_path + resources_usage_metrics_path)
-    # os.mkdir(rel_output_path + package_loss_metrics_path)
 
     if generate_metrics['update']:
         generate_update_metrics_graphs()
 
     if generate_metrics['resources_usage']:
         generate_resources_usage_graphs()
-
-    if generate_metrics['package_loss']:
-        print('no package-loss graphs implemented')
 
 
 def generate_update_metrics_graphs():
@@ -43,12 +37,13 @@ def generate_update_metrics_graphs():
     for update_path in update_csv_data:
         update_csv_data_file_names_path = update_csv_data_path + '/' + update_path + '/'
         update_csv_data_file_names = os.listdir(update_csv_data_file_names_path)
+        update_out_path = rel_output_path + update_metrics_path + '/' + update_path.partition('.')[2]
+        os.mkdir(update_out_path)
         for csv_name in update_csv_data_file_names:
             csv_path = update_csv_data_file_names_path + '/' + csv_name
             csv = pandas.read_csv(csv_path)
-            seaborn.relplot(data=csv, x='timestamp', y='count', kind="line")
-            plt.savefig(rel_output_path + update_metrics_path + '/' + csv_name.partition('.')[
-                0] + '.png')
+            seaborn.scatterplot(data=csv, x='timestamp', y='count')
+            plt.savefig(update_out_path + '/' + csv_name.partition('.')[0] + '.png')
             plt.show()
 
 

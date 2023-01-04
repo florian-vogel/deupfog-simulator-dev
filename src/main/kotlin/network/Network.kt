@@ -6,7 +6,12 @@ import software.SoftwareState
 import software.SoftwareUpdate
 
 val createPushStrategy = { UpdateRetrievalParams(registerAtServerForUpdates = true) }
-val createPullStrategy = { interval: Int -> UpdateRetrievalParams(updateRequestInterval = interval) }
+val createPullStrategy = { interval: Int ->
+    UpdateRetrievalParams(
+        chooseNextUpdateRequestInterval = (
+                { (1..interval).random() })
+    )
+}
 
 data class NetworkConfig(
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,

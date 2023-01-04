@@ -34,7 +34,7 @@ class ResourcesUsageMetricsCollector() : Metrics {
         println(
             "resources usage \n" +
                     "successful-data-send in total: $successfulDataSendInTotal \n" +
-                    "processing-time in total: $processingTimeInTotal"
+                    "processing-time in total: $processingTimeInTotal \n"
         )
     }
 

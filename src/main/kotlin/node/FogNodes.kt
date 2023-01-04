@@ -91,11 +91,36 @@ open class Server(
     private fun processRequest(request: UpdateRequest) {
         initUpdatePackageAndPassToLink(request.initialPosition as UpdateReceiverNode, request.softwareStates)
         if (request is PullLatestUpdatesRequest) {
-            recentPullNodesRegistry[request.initialPosition] = request.softwareStates.toMutableList()
+            updatePullNodesRegistry(request.initialPosition, request.softwareStates.toMutableList())
         } else if (request is RegisterForUpdatesRequest) {
-            subscriberRegistry[request.initialPosition] = request.softwareStates.toMutableList()
+            updateSubscriberRegistry(request.initialPosition, request.softwareStates.toMutableList())
         }
-        registerAtServers(listeningFor())
+    }
+
+    private fun updatePullNodesRegistry(pullNode: UpdateReceiverNode, listeningFor: MutableList<SoftwareState>) {
+        val latestValue = recentPullNodesRegistry[pullNode]
+        if (latestValue == null || !latestValue.containsAll(listeningFor)) {
+            recentPullNodesRegistry[pullNode] = listeningFor
+            registerAtServers(listeningFor())
+        }
+    }
+
+    private fun updateSubscriberRegistry(subscriber: UpdateReceiverNode, listeningFor: MutableList<SoftwareState>) {
+        val latestValue = subscriberRegistry[subscriber]
+        val latestListeningFor = listeningFor()
+        var listeningForContainsNewValue = false
+        listeningFor.forEach {
+            val listeningForDoesDotCoverValue =
+                latestListeningFor.find { state -> state.type == it.type && state.versionNumber == it.versionNumber } == null
+            if (listeningForDoesDotCoverValue) {
+                listeningForContainsNewValue = true
+            }
+        }
+        if (latestValue == null || listeningForContainsNewValue) {
+            subscriberRegistry[subscriber] =
+                listeningFor.map { SoftwareState(it.type, it.versionNumber, it.size) }.toMutableList()
+            registerAtServers(listeningFor())
+        }
     }
 
     private fun initUpdatePackagesToAllSubscribers() {
