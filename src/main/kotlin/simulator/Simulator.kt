@@ -1,6 +1,5 @@
 package simulator
 
-import TimedCallback
 import UpdatePackage
 import metrics.MetricsCollector
 import network.Network

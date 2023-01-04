@@ -11,7 +11,7 @@ val createPullStrategy = { interval: Int -> UpdateRetrievalParams(updateRequestI
 data class NetworkConfig(
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,
     val softwareTypes: List<Software> = listOf(),
-    val defaultPackageConfig: ServerPackageConfig,
+    val defaultPackageConfig: PackagesConfigServer,
 )
 
 class Network(val networkConfig: NetworkConfig) {
@@ -25,7 +25,7 @@ class Network(val networkConfig: NetworkConfig) {
         runningSoftware: List<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) },
         updateRetrievalParams: UpdateRetrievalParams = networkConfig.defaultUpdateRetrievalParams,
         initialNodeState: MutableNodeState = MutableNodeState(true),
-        packageConfig: PackageConfig = networkConfig.defaultPackageConfig
+        packagesConfig: PackagesConfig = networkConfig.defaultPackageConfig
     ): Edge {
         val newEdge =
             Edge(
@@ -34,7 +34,7 @@ class Network(val networkConfig: NetworkConfig) {
                 runningSoftware,
                 updateRetrievalParams,
                 initialNodeState,
-                packageConfig
+                packagesConfig
             )
         edges.add(newEdge)
         return newEdge
@@ -46,7 +46,7 @@ class Network(val networkConfig: NetworkConfig) {
         runningSoftware: List<SoftwareState> = emptyList(),
         updateRetrievalParams: UpdateRetrievalParams = createPushStrategy(),
         initialNodeState: MutableNodeState = MutableNodeState(true),
-        packageConfig: ServerPackageConfig = networkConfig.defaultPackageConfig
+        packageConfig: PackagesConfigServer = networkConfig.defaultPackageConfig
     ): Server {
         val newServer =
             Server(

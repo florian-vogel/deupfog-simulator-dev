@@ -1,7 +1,6 @@
 package test
 
 import network.LinkConfig
-import simulator.Simulator
 import network.*
 import node.*
 import simulator.InitialUpdateParams
@@ -17,14 +16,12 @@ val simpleTransmission = TransmissionConfig(
     1
 ) { size, bandwidth, delay -> size / bandwidth + delay * 2 }
 
-val simplePackageConfig = ServerPackageConfig(
+val simplePackageConfig = PackagesConfigServer(
     1, 1, 1
-)
+) { _, _ -> 1 }
 
 class Scenarios {
     fun testScenario(): SimulationSetup {
-        // 1 size unit = 1 byte
-        // 1 temp unit = 1 ms
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 1) { 1 }
         val deepestLevel = 2
@@ -60,8 +57,6 @@ class Scenarios {
     }
 
     fun testScenario02(): SimulationSetup {
-        // 1 size unit = 1 byte
-        // 1 temp unit = 1 ms
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 1) { 1 }
         val deepestLevel = 1

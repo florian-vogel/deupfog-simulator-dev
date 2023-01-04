@@ -14,8 +14,6 @@ open class MutableNodeState(
 
 open class NodeConfig(
     val storageCapacity: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
-    // todo
-    val calculateProcessingTime: ((p: Package) -> Int)? = null
 )
 
 open class Node(
@@ -44,13 +42,10 @@ open class Node(
     }
 
     fun getOnlineLinks(): List<UnidirectionalLink>? {
-        // todo: remove online check of node?
-        if (!getOnlineState()) return null
         return this.links.filter { it.getOnlineState() }
     }
 
     fun getOnlineLinkTo(node: Node): UnidirectionalLink? {
-        if (!getOnlineState()) return null
         return links.find { it.to == node && it.getOnlineState() }
     }
 
@@ -78,7 +73,7 @@ open class Node(
     }
 
     protected fun addToPackageQueue(p: Package) {
-        if (this.getFreeStorageCapacity() > p.getSize()) {
+        if (this.freeStorageCapacity() > p.getSize()) {
             this.packageQueue.add(p)
             links.find { it.to == p.destination }?.startTransmission(p)
         } else {
@@ -86,8 +81,12 @@ open class Node(
         }
     }
 
-    private fun getFreeStorageCapacity(): Int {
+    private fun freeStorageCapacity(): Int {
         return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
+    }
+
+    protected fun countPackagesInQueue(): Int {
+        return this.packageQueue.size
     }
 }
 

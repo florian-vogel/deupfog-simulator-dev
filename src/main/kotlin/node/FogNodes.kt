@@ -12,13 +12,13 @@ import software.applyUpdates
 import Package
 import network.LinkConfig
 import network.MutableLinkState
-import java.util.ServiceConfigurationError
 
-class ServerPackageConfig(
+class PackagesConfigServer(
     registerRequestOverhead: Int,
     pullRequestOverhead: Int,
     val updatePackageOverhead: Int,
-) : PackageConfig(registerRequestOverhead, pullRequestOverhead)
+    calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 },
+) : PackagesConfig(registerRequestOverhead, pullRequestOverhead, calculatePackageSendProcessingTime)
 
 open class Server(
     nodeSimParams: NodeConfig,
@@ -26,9 +26,9 @@ open class Server(
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialServerState: MutableNodeState,
-    val packageConfig: ServerPackageConfig
+    private val packagesConfig: PackagesConfigServer
 ) : UpdateReceiverNode(
-    nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState, packageConfig
+    nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState, packagesConfig
 ) {
     private val subscriberRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
     private val updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>> = mutableMapOf()
@@ -55,8 +55,7 @@ open class Server(
     }
 
     override fun listeningFor(): List<SoftwareState> {
-        // TODO: refactor this
-        val runningSoftware = super.listeningFor()
+        // todo: refactor
         val serverNodeListeningFor =
             getCurrentUpdateRegistryStates() + getCurrentSubscriberRegistryStates() + getCurrentRecentPullNodesRegistryStates()
         val combined = runningSoftware + serverNodeListeningFor
@@ -123,9 +122,6 @@ open class Server(
     }
 
     private fun getCurrentRecentPullNodesRegistryStates(): List<SoftwareState> {
-        // todo: remove, maybe refactor whole registry approach,
-        // just save where to send to and what to listenFor
-        // don't care about push pull nodes or subscribers
         return recentPullNodesRegistry.map { it.value }.flatten()
     }
 
@@ -144,15 +140,13 @@ open class Server(
             }?.maxByOrNull { compatibleUpdate -> compatibleUpdate.updatesToVersion }
         }.forEach {
             if (it != null) {
-                receive(
-                    UpdatePackage(this, target, packageConfig.updatePackageOverhead, it)
-                )
+                val updatePackage = UpdatePackage(this, target, packagesConfig.updatePackageOverhead, it)
+                initPackage(updatePackage)
             }
         }
     }
 
     fun initializeUpdate(updatePackage: UpdatePackage) {
-        //receive(updatePackage)
         processUpdate(updatePackage.update)
     }
 }
@@ -163,7 +157,7 @@ class Edge(
     runningSoftware: List<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState,
-    packageConfig: PackageConfig
+    packagesConfig: PackagesConfig
 ) : UpdateReceiverNode(
-    nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState, packageConfig
+    nodeSimParams, responsibleUpdateServer, runningSoftware, updateRetrievalParams, initialNodeState, packagesConfig
 ) {}

@@ -2,12 +2,13 @@ package node
 
 import PullLatestUpdatesRequest
 import RegisterForUpdatesRequest
-import TimedCallback
+import simulator.TimedCallback
 import UpdatePackage
 import Package
 import simulator.Simulator
 import software.SoftwareState
 import software.SoftwareUpdate
+import java.util.*
 
 data class UpdateRetrievalParams(
     // Push
@@ -16,18 +17,19 @@ data class UpdateRetrievalParams(
     val updateRequestInterval: Int? = null,
 )
 
-open class PackageConfig(
+open class PackagesConfig(
     val registerRequestOverhead: Int,
     val pullRequestOverhead: Int,
+    val calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 }
 )
 
 abstract class UpdateReceiverNode(
     nodeConfig: NodeConfig,
     private val assignedServers: List<Server>,
-    private val runningSoftware: List<SoftwareState>,
+    protected val runningSoftware: List<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState,
-    private val packageConfig: PackageConfig,
+    private val packagesConfig: PackagesConfig,
 ) : Node(nodeConfig, initialNodeState) {
 
     private var pullRequestSchedule: TimedCallback? = null
@@ -40,7 +42,7 @@ abstract class UpdateReceiverNode(
 
     override fun receive(p: Package) {
         if (getOnlineState()) {
-            if ((p is UpdatePackage) && (p.destination == this)) {
+            if (p is UpdatePackage) {
                 processUpdate(p.update)
             } else {
                 addToPackageQueue(p)
@@ -80,9 +82,9 @@ abstract class UpdateReceiverNode(
 
     private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
         if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
-            val packageOverhead = packageConfig.registerRequestOverhead
+            val packageOverhead = packagesConfig.registerRequestOverhead
             val registerRequest = RegisterForUpdatesRequest(packageOverhead, this, server, listeningFor)
-            receive(registerRequest)
+            initPackage(registerRequest)
         }
     }
 
@@ -118,18 +120,38 @@ abstract class UpdateReceiverNode(
     }
 
     private fun schedulePullRequest(nextRequestIn: Int) {
-        pullRequestSchedule = TimedCallback(Simulator.getCurrentTimestamp() + nextRequestIn) {
+        val newPullRequestSchedule = TimedCallback(Simulator.getCurrentTimestamp() + nextRequestIn) {
             makePullRequestsRecursive()
         }
-        Simulator.addCallback(pullRequestSchedule!!)
+        Simulator.addCallback(newPullRequestSchedule)
+        pullRequestSchedule = newPullRequestSchedule
     }
 
     private fun sendPullRequestsToResponsibleServers() {
         assignedServers.forEach {
-            val packageOverhead = packageConfig.pullRequestOverhead
+            val packageOverhead = packagesConfig.pullRequestOverhead
             val request = PullLatestUpdatesRequest(packageOverhead, this, it, listeningFor())
-            receive(request)
+            initPackage(request)
         }
+    }
+
+    protected fun initPackage(p: Package) {
+        val processingTime = packagesConfig.calculatePackageSendProcessingTime(
+            p,
+            countPackagesInQueue()
+        )
+        val initPackageCallback = TimedCallback(
+            Simulator.getCurrentTimestamp() + processingTime
+        ) {
+            receive(p)
+        }
+
+        Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onProcessPackage(
+            processingTime
+        )
+        Simulator.addCallback(
+            initPackageCallback
+        )
     }
 }
 

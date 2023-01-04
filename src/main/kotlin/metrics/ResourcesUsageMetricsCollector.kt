@@ -8,6 +8,7 @@ class ResourcesUsageMetricsCollector() : Metrics {
         c1.timestamp.compareTo(c2.timestamp)
     }
     private var successfulDataSendInTotal: Int = 0
+    private var processingTimeInTotal: Int = 0
 
     fun onLinkOccupied(linkBandwidth: Int) {
         addBandwidthUsageTimelineMetric(linkBandwidth)
@@ -15,6 +16,10 @@ class ResourcesUsageMetricsCollector() : Metrics {
 
     fun onLinkFreedUp(linkBandwidth: Int) {
         addBandwidthUsageTimelineMetric(-linkBandwidth)
+    }
+
+    fun onProcessPackage(processingTime: Int) {
+        processingTimeInTotal += processingTime
     }
 
     fun packageArrivedSuccessfully(size: Int) {
@@ -28,7 +33,8 @@ class ResourcesUsageMetricsCollector() : Metrics {
     override fun printSummaryToConsole() {
         println(
             "resources usage \n" +
-                    "successful-data-send in total: $successfulDataSendInTotal \n"
+                    "successful-data-send in total: $successfulDataSendInTotal \n" +
+                    "processing-time in total: $processingTimeInTotal"
         )
     }
 

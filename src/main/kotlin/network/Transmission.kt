@@ -1,6 +1,6 @@
 package network
 
-import TimedCallback
+import simulator.TimedCallback
 import simulator.Simulator
 import Package
 

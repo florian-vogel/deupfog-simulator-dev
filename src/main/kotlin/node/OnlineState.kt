@@ -1,6 +1,6 @@
 package node
 
-import TimedCallback
+import simulator.TimedCallback
 import simulator.Simulator
 
 open class OnlineState(
