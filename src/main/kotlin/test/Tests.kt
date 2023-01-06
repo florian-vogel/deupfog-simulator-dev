@@ -19,7 +19,7 @@ fun clientServerTestPush(): SimulationSetup{
     val edgeNode = network.generateEdge(
         NodeConfig(10),
         listOf(serverNode),
-        listOf(SoftwareState(software, 0, 0)),
+        mutableListOf(SoftwareState(software, 0, 0)),
     )
     serverNode.createLink(LinkConfig(1, 0, simpleTransmission), edgeNode, MutableLinkState(true))
     edgeNode.createLink(LinkConfig(1, 0, simpleTransmission), serverNode, MutableLinkState(true))

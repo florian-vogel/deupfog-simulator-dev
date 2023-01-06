@@ -2,7 +2,6 @@ package network
 
 import simulator.TimedCallback
 import simulator.Simulator
-import Package
 
 data class TransmissionConfig(
     val transmissionOverhead: Int, val transmissionTimeCalc: (size: Int, bandwidth: Int, delay: Int) -> Int

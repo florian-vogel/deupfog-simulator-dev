@@ -1,6 +1,6 @@
 package simulator
 
-import UpdatePackage
+import network.UpdatePackage
 import metrics.MetricsCollector
 import network.Network
 import node.Server

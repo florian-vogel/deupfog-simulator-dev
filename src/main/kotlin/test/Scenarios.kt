@@ -24,7 +24,7 @@ class Scenarios {
     fun testScenario(): SimulationSetup {
         val software = Software("testSoftware")
         val update01 = SoftwareUpdate(software, 1, 100000) { 0 }
-        val deepestLevel = 2
+        val deepestLevel = 1
         val update02 = SoftwareUpdate(software, 2, 100000) { 0 }
 
         val networkConfig = NetworkConfig(
@@ -44,7 +44,7 @@ class Scenarios {
             createPushStrategy(),
             { NodeConfig(1000000) },
             { LinkConfig(10000, 10, simpleTransmission) },
-            { level -> if (level == deepestLevel) 2 else 0 }
+            { level -> if (level == deepestLevel) 1 else 0 }
         ))
         val network = generateHierarchicalNetwork(
             networkConfig,

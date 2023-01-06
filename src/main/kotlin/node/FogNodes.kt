@@ -1,17 +1,9 @@
 package node
 
-import PullLatestUpdatesRequest
-import RegisterForUpdatesRequest
-import network.UnidirectionalLink
-import UpdatePackage
-import UpdateRequest
+import network.*
 import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
-import software.applyUpdates
-import Package
-import network.LinkConfig
-import network.MutableLinkState
 
 class PackagesConfigServer(
     registerRequestOverhead: Int,
@@ -23,16 +15,16 @@ class PackagesConfigServer(
 open class Server(
     nodeSimParams: NodeConfig,
     responsibleServer: List<Server>,
-    runningSoftware: List<SoftwareState>,
+    runningSoftware: MutableList<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialServerState: MutableNodeState,
     private val packagesConfig: PackagesConfigServer
 ) : UpdateReceiverNode(
     nodeSimParams, responsibleServer, runningSoftware, updateRetrievalParams, initialServerState, packagesConfig
 ) {
-    private val subscriberRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
+    private val subscriberRegistry: MutableMap<UpdateReceiverNode, SoftwareInformation> = mutableMapOf()
+    private val recentPullNodesRegistry: MutableMap<UpdateReceiverNode, SoftwareInformation> = mutableMapOf()
     private val updateRegistry: MutableMap<Software, MutableList<SoftwareUpdate>> = mutableMapOf()
-    private val recentPullNodesRegistry: MutableMap<UpdateReceiverNode, MutableList<SoftwareState>> = mutableMapOf()
 
     override fun receive(p: Package) {
         if (!getOnlineState()) return
@@ -54,24 +46,11 @@ open class Server(
         initUpdatePackagesToAllSubscribers()
     }
 
-    override fun listeningFor(): List<SoftwareState> {
-        // todo: refactor
-        val serverNodeListeningFor =
-            getCurrentUpdateRegistryStates() + getCurrentSubscriberRegistryStates() + getCurrentRecentPullNodesRegistryStates()
-        val combined = runningSoftware + serverNodeListeningFor
-        val oneValueForEachType = mutableListOf<SoftwareState>()
-        combined.forEach { combinedValue ->
-            if (!oneValueForEachType.map { it.type }.contains(combinedValue.type)) {
-                oneValueForEachType.add(combinedValue)
-            } else {
-                val x = oneValueForEachType.find { combinedValue.type == it.type }
-                if (x != null && x.versionNumber < combinedValue.versionNumber) {
-                    oneValueForEachType.remove(x)
-                    oneValueForEachType.add(combinedValue)
-                }
-            }
-        }
-        return oneValueForEachType
+    override fun softwareInformation(): SoftwareInformation {
+        val listenerSoftwareInformation =
+            (getCurrentSubscriberRegistrySoftwareInformation() + getCurrentRecentPullNodesRegistrySoftwareInformation())
+        val serverUpdates = getCurrentUpdateRegistryValues()
+        return ServerSoftwareInformation(runningSoftware, serverUpdates, listenerSoftwareInformation)
     }
 
     override fun createLink(linkConfig: LinkConfig, to: Node, initialLinkState: MutableLinkState): UnidirectionalLink {
@@ -89,37 +68,31 @@ open class Server(
     }
 
     private fun processRequest(request: UpdateRequest) {
-        initUpdatePackageAndPassToLink(request.initialPosition as UpdateReceiverNode, request.softwareStates)
+        initUpdatePackageAndPassToLink(request.initialPosition as UpdateReceiverNode, request.softwareInformation)
         if (request is PullLatestUpdatesRequest) {
-            updatePullNodesRegistry(request.initialPosition, request.softwareStates.toMutableList())
+            updatePullNodesRegistry(request.initialPosition, request.softwareInformation)
         } else if (request is RegisterForUpdatesRequest) {
-            updateSubscriberRegistry(request.initialPosition, request.softwareStates.toMutableList())
+            updateSubscriberRegistry(request.initialPosition, request.softwareInformation)
         }
     }
 
-    private fun updatePullNodesRegistry(pullNode: UpdateReceiverNode, listeningFor: MutableList<SoftwareState>) {
-        val latestValue = recentPullNodesRegistry[pullNode]
-        if (latestValue == null || !latestValue.containsAll(listeningFor)) {
-            recentPullNodesRegistry[pullNode] = listeningFor
-            registerAtServers(listeningFor())
+    private fun updatePullNodesRegistry(pullNode: UpdateReceiverNode, softwareInformation: SoftwareInformation) {
+        val currentPullNodeSoftwareInformation = recentPullNodesRegistry[pullNode]
+        if (currentPullNodeSoftwareInformation == null ||
+            !currentPullNodeSoftwareInformation.containsAllInformationOf(softwareInformation)
+        ) {
+            recentPullNodesRegistry[pullNode] = softwareInformation
+            registerAtServers(softwareInformation())
         }
     }
 
-    private fun updateSubscriberRegistry(subscriber: UpdateReceiverNode, listeningFor: MutableList<SoftwareState>) {
-        val latestValue = subscriberRegistry[subscriber]
-        val latestListeningFor = listeningFor()
-        var listeningForContainsNewValue = false
-        listeningFor.forEach {
-            val listeningForDoesDotCoverValue =
-                latestListeningFor.find { state -> state.type == it.type && state.versionNumber == it.versionNumber } == null
-            if (listeningForDoesDotCoverValue) {
-                listeningForContainsNewValue = true
-            }
-        }
-        if (latestValue == null || listeningForContainsNewValue) {
-            subscriberRegistry[subscriber] =
-                listeningFor.map { SoftwareState(it.type, it.versionNumber, it.size) }.toMutableList()
-            registerAtServers(listeningFor())
+    private fun updateSubscriberRegistry(subscriber: UpdateReceiverNode, softwareInformation: SoftwareInformation) {
+        val currentSubscriberSoftwareInformation = subscriberRegistry[subscriber]
+        if (currentSubscriberSoftwareInformation == null ||
+            !currentSubscriberSoftwareInformation.containsAllInformationOf(softwareInformation)
+        ) {
+            subscriberRegistry[subscriber] = softwareInformation
+            registerAtServers(softwareInformation())
         }
     }
 
@@ -132,38 +105,34 @@ open class Server(
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
         val registry = updateRegistry[update.type];
         if (registry == null) {
-            // todo: can I replace this with registry = ...
             updateRegistry[update.type] = mutableListOf(update)
         } else {
             registry.add(update)
         }
     }
 
-    private fun getCurrentUpdateRegistryStates(): List<SoftwareState> {
-        val updateRegistry = updateRegistry.toList() ?: return emptyList()
-        return updateRegistry.map {
-            applyUpdates(it.first, it.second)
-        }
+    private fun getCurrentUpdateRegistryValues(): List<SoftwareUpdate> {
+        return updateRegistry.values.flatten()
     }
 
-    private fun getCurrentRecentPullNodesRegistryStates(): List<SoftwareState> {
-        return recentPullNodesRegistry.map { it.value }.flatten()
+    private fun getCurrentRecentPullNodesRegistrySoftwareInformation(): List<SoftwareInformation> {
+        return recentPullNodesRegistry.map { it.value }
     }
 
-    private fun getCurrentSubscriberRegistryStates(): List<SoftwareState> {
-        return subscriberRegistry.map { it.value }.flatten()
+    private fun getCurrentSubscriberRegistrySoftwareInformation(): List<SoftwareInformation> {
+        return subscriberRegistry.map { it.value }
     }
 
     private fun initUpdatePackageAndPassToLink(
-        target: UpdateReceiverNode, targetSoftwareStates: List<SoftwareState>
+        target: UpdateReceiverNode, targetSoftwareInformation: SoftwareInformation
     ) {
-        targetSoftwareStates.map {
-            updateRegistry[it.type]?.filter { update ->
-                it.type.updateCompatible(
-                    it.versionNumber, update.updatesToVersion
-                )
-            }?.maxByOrNull { compatibleUpdate -> compatibleUpdate.updatesToVersion }
-        }.forEach {
+        val updates = updateRegistry.values.flatten()
+        val updatesNeededByTarget = updates.filter { update ->
+            targetSoftwareInformation.updateNeeded(update)
+        }.groupBy { it.type }.map { updatesOfType ->
+            updatesOfType.value.maxByOrNull { it.updatesToVersion }
+        }
+        updatesNeededByTarget.forEach {
             if (it != null) {
                 val updatePackage = UpdatePackage(this, target, packagesConfig.updatePackageOverhead, it)
                 initPackage(updatePackage)
@@ -179,7 +148,7 @@ open class Server(
 class Edge(
     nodeSimParams: NodeConfig,
     responsibleUpdateServer: List<Server>,
-    runningSoftware: List<SoftwareState>,
+    runningSoftware: MutableList<SoftwareState>,
     updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState,
     packagesConfig: PackagesConfig

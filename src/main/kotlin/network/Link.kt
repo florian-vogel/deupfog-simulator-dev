@@ -3,7 +3,6 @@ package network
 import simulator.Simulator
 import node.Node
 import node.OnlineState
-import Package
 
 data class MutableLinkState(
     val isOnline: Boolean

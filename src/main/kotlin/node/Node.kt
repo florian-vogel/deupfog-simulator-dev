@@ -4,7 +4,7 @@ import network.LinkConfig
 import network.MutableLinkState
 import network.UnidirectionalLink
 import java.util.LinkedList
-import Package
+import network.Package
 import simulator.Simulator
 import java.util.Queue
 

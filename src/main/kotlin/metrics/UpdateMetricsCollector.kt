@@ -61,19 +61,15 @@ class UpdateMetricsCollector(
     }
 
     private fun onArriveAtEdge(update: SoftwareUpdate, edge: Edge) {
-        if (updateArrivedAtAllEdges(update)) return
-
         metrics[update]?.arrivedAtEdgeTimeline?.add(Pair(Simulator.getCurrentTimestamp(), edge))
-        if (updateArrivedAtAllEdges(update)) {
+        if (metrics[update]?.arrivedAtAllEdgesAt == null && updateArrivedAtAllEdges(update)) {
             metrics[update]?.arrivedAtAllEdgesAt = Simulator.getCurrentTimestamp()
         }
     }
 
     private fun onArriveAtServer(update: SoftwareUpdate, server: Server) {
-        if (updateArrivedAtAllServers(update)) return;
-
         metrics[update]?.arrivedAtServerTimeline?.add(Pair(Simulator.getCurrentTimestamp(), server))
-        if (updateArrivedAtAllServers(update)) {
+        if (metrics[update]?.arrivedAtAllServersAt == null && updateArrivedAtAllServers(update)) {
             metrics[update]?.arrivedAtAllServersAt = Simulator.getCurrentTimestamp()
         }
     }
@@ -81,14 +77,14 @@ class UpdateMetricsCollector(
     private fun updateArrivedAtAllEdges(update: SoftwareUpdate): Boolean {
         return edges.all {
             metrics[update]?.arrivedAtEdgeTimeline?.map { pair -> pair.second }
-                ?.contains(it) == true || !it.listeningFor().map { state -> state.type }.contains(update.type)
+                ?.contains(it) == true || !it.softwareInformation().updateNeeded(update)
         }
     }
 
     private fun updateArrivedAtAllServers(update: SoftwareUpdate): Boolean {
         return servers.all {
             metrics[update]?.arrivedAtServerTimeline?.map { pair -> pair.second }
-                ?.contains(it) == true || !it.listeningFor().map { state -> state.type }.contains(update.type)
+                ?.contains(it) == true || !it.softwareInformation().updateNeeded(update)
         }
     }
 

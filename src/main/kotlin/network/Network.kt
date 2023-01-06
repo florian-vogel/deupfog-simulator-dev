@@ -27,7 +27,7 @@ class Network(val networkConfig: NetworkConfig) {
     fun generateEdge(
         nodeSimParams: NodeConfig,
         responsibleUpdateServer: List<Server>,
-        runningSoftware: List<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) },
+        runningSoftware: MutableList<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) }.toMutableList(),
         updateRetrievalParams: UpdateRetrievalParams = networkConfig.defaultUpdateRetrievalParams,
         initialNodeState: MutableNodeState = MutableNodeState(true),
         packagesConfig: PackagesConfig = networkConfig.defaultPackageConfig
@@ -48,7 +48,7 @@ class Network(val networkConfig: NetworkConfig) {
     fun generateServer(
         nodeSimParams: NodeConfig,
         responsibleUpdateServer: List<Server> = emptyList(),
-        runningSoftware: List<SoftwareState> = emptyList(),
+        runningSoftware: MutableList<SoftwareState> = mutableListOf(),
         updateRetrievalParams: UpdateRetrievalParams = createPushStrategy(),
         initialNodeState: MutableNodeState = MutableNodeState(true),
         packageConfig: PackagesConfigServer = networkConfig.defaultPackageConfig
@@ -110,7 +110,7 @@ fun generateHierarchicalNetwork(
 fun generateServerHierarchy(network: Network, hierarchyConfig: HierarchyConfiguration): Map<Int, List<Server>> {
     val serversAtLevel = mutableMapOf<Int, List<Server>>()
     val rootServer = network.generateServer(
-        hierarchyConfig.serverSimParamsAtLevel(0), listOf(), listOf(), UpdateRetrievalParams()
+        hierarchyConfig.serverSimParamsAtLevel(0), listOf(), mutableListOf(), UpdateRetrievalParams()
     )
     serversAtLevel[0] = mutableListOf(rootServer)
 
@@ -120,7 +120,7 @@ fun generateServerHierarchy(network: Network, hierarchyConfig: HierarchyConfigur
         for (parent in parentServers!!) {
             for (i in 1..hierarchyConfig.branchingFactor) {
                 val childServer = network.generateServer(
-                    hierarchyConfig.serverSimParamsAtLevel(currentLevel), listOf(parent), listOf()
+                    hierarchyConfig.serverSimParamsAtLevel(currentLevel), listOf(parent), mutableListOf()
                 )
                 parent.createLink(
                     hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel),
@@ -153,7 +153,7 @@ fun addEdgesToHierarchy(
                     edgeSimParams,
                     listOf(server),
                     // todo: copy interface, implemented by softwareState, with copy method
-                    edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
+                    edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }.toMutableList()
                 )
                 server.createLink(linkSimParams, edge, MutableLinkState(true))
                 edge.createLink(linkSimParams, server, MutableLinkState(true))

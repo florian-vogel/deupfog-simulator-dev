@@ -1,10 +1,7 @@
 package node
 
-import PullLatestUpdatesRequest
-import RegisterForUpdatesRequest
+import network.*
 import simulator.TimedCallback
-import UpdatePackage
-import Package
 import simulator.Simulator
 import software.SoftwareState
 import software.SoftwareUpdate
@@ -25,7 +22,7 @@ open class PackagesConfig(
 abstract class UpdateReceiverNode(
     nodeConfig: NodeConfig,
     private val assignedServers: List<Server>,
-    protected val runningSoftware: List<SoftwareState>,
+    protected val runningSoftware: MutableList<SoftwareState>,
     private val updateRetrievalParams: UpdateRetrievalParams,
     initialNodeState: MutableNodeState,
     private val packagesConfig: PackagesConfig,
@@ -40,12 +37,13 @@ abstract class UpdateReceiverNode(
     }
 
     override fun receive(p: Package) {
-        if (getOnlineState()) {
+        if (!getOnlineState()) return
+        if (p.destination == this) {
             if (p is UpdatePackage) {
                 processUpdate(p.update)
-            } else {
-                addToPackageQueue(p)
             }
+        } else {
+            addToPackageQueue(p)
         }
     }
 
@@ -67,22 +65,22 @@ abstract class UpdateReceiverNode(
     }
 
     private fun initStrategy() {
-        registerAtServers(listeningFor())
+        registerAtServers(softwareInformation())
         makePullRequestsRecursive()
     }
 
-    protected fun registerAtServers(listeningFor: List<SoftwareState>) {
+    protected fun registerAtServers(softwareInformation: SoftwareInformation) {
         if (updateRetrievalParams.registerAtServerForUpdates) {
             assignedServers.forEach {
-                registerAtServer(it, listeningFor)
+                registerAtServer(it, softwareInformation)
             }
         }
     }
 
-    private fun registerAtServer(server: Server, listeningFor: List<SoftwareState>) {
-        if (updateRetrievalParams.registerAtServerForUpdates && listeningFor.isNotEmpty()) {
+    private fun registerAtServer(server: Server, softwareInformation: SoftwareInformation) {
+        if (updateRetrievalParams.registerAtServerForUpdates) {
             val packageOverhead = packagesConfig.registerRequestOverhead
-            val registerRequest = RegisterForUpdatesRequest(packageOverhead, this, server, listeningFor)
+            val registerRequest = RegisterForUpdatesRequest(packageOverhead, this, server, softwareInformation)
             initPackage(registerRequest)
         }
     }
@@ -91,17 +89,17 @@ abstract class UpdateReceiverNode(
         removePullRequestSchedule()
     }
 
-    open fun listeningFor(): List<SoftwareState> {
-        val copy = runningSoftware
-        return copy.map { SoftwareState(it.type, it.versionNumber, it.size) }
+    open fun softwareInformation(): SoftwareInformation {
+        return SoftwareInformation(runningSoftware)
     }
 
 
     private fun updateRunningSoftware(update: SoftwareUpdate) {
         val targetSoftware = runningSoftware::find { it.type == update.type }
         if (targetSoftware != null) {
-            targetSoftware.applyUpdate(update)
-            registerAtServers(listeningFor())
+            runningSoftware.remove(targetSoftware)
+            runningSoftware.add(targetSoftware.applyUpdate(update))
+            registerAtServers(softwareInformation())
         }
     }
 
@@ -131,7 +129,7 @@ abstract class UpdateReceiverNode(
     private fun sendPullRequestsToResponsibleServers() {
         assignedServers.forEach {
             val packageOverhead = packagesConfig.pullRequestOverhead
-            val request = PullLatestUpdatesRequest(packageOverhead, this, it, listeningFor())
+            val request = PullLatestUpdatesRequest(packageOverhead, this, it, softwareInformation())
             initPackage(request)
         }
     }
