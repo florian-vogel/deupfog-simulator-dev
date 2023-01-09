@@ -42,8 +42,13 @@ open class Server(
 
     override fun processUpdate(update: SoftwareUpdate) {
         super.processUpdate(update)
-        updateUpdateRegistry(update)
-        initUpdatePackagesToAllSubscribers()
+        val updateAlreadyInRegistry = getCurrentUpdateRegistryValues().contains(update)
+        if (updateAlreadyInRegistry) {
+            return;
+        } else {
+            updateUpdateRegistry(update)
+            initUpdatePackagesToAllSubscribers(listOf(update))
+        }
     }
 
     override fun softwareInformation(): SoftwareInformation {
@@ -96,9 +101,9 @@ open class Server(
         }
     }
 
-    private fun initUpdatePackagesToAllSubscribers() {
+    private fun initUpdatePackagesToAllSubscribers(newUpdates: List<SoftwareUpdate>) {
         subscriberRegistry.forEach {
-            initUpdatePackageAndPassToLink(it.key, it.value)
+            initUpdatePackageAndPassToLink(it.key, it.value, newUpdates)
         }
     }
 
@@ -124,9 +129,12 @@ open class Server(
     }
 
     private fun initUpdatePackageAndPassToLink(
-        target: UpdateReceiverNode, targetSoftwareInformation: SoftwareInformation
+        target: UpdateReceiverNode,
+        targetSoftwareInformation: SoftwareInformation,
+        newUpdates: List<SoftwareUpdate>? = null
     ) {
-        val updates = updateRegistry.values.flatten()
+        val updates = newUpdates ?: getCurrentUpdateRegistryValues()
+        //val updates = getCurrentUpdateRegistryValues().filter { newUpdates.contains(it) }
         val updatesNeededByTarget = updates.filter { update ->
             targetSoftwareInformation.updateNeeded(update)
         }.groupBy { it.type }.map { updatesOfType ->

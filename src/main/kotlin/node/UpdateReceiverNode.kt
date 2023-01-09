@@ -95,10 +95,10 @@ abstract class UpdateReceiverNode(
 
 
     private fun updateRunningSoftware(update: SoftwareUpdate) {
-        val targetSoftware = runningSoftware::find { it.type == update.type }
-        if (targetSoftware != null) {
-            runningSoftware.remove(targetSoftware)
-            runningSoftware.add(targetSoftware.applyUpdate(update))
+        val updateTarget = runningSoftware::find { it.type == update.type }
+        if (updateTarget != null) {
+            runningSoftware.remove(updateTarget)
+            runningSoftware.add(updateTarget.applyUpdate(update))
             registerAtServers(softwareInformation())
         }
     }
