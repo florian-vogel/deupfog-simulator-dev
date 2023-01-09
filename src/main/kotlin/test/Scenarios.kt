@@ -23,9 +23,9 @@ val simplePackageConfig = PackagesConfigServer(
 class Scenarios {
     fun testScenario(): SimulationSetup {
         val software = Software("testSoftware")
-        val update01 = SoftwareUpdate(software, 1, 5000000) { 0 }
-        val deepestLevel = 5
-        val update02 = SoftwareUpdate(software, 2, 5000000) { 0 }
+        //val update01 = SoftwareUpdate(software, 1, 5000000) { 0 }
+        val deepestLevel = 2
+        //val update02 = SoftwareUpdate(software, 2, 5000000) { 0 }
 
         val networkConfig = NetworkConfig(
             createPushStrategy(),
@@ -34,17 +34,16 @@ class Scenarios {
         )
         val hierarchyConfig = HierarchyConfiguration(
             deepestLevel,
-            1,
+            2,
             { NodeConfig(100000000) },
             { LinkConfig(10000, 10, simpleTransmission) },
-            listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
             { NodeConfig(100000000) },
             { LinkConfig(10000, 10, simpleTransmission) },
-            { level -> if (level == deepestLevel) 1 else 0 }
+            { level -> if (level == deepestLevel) 2 else 0 }
         ))
         val network = generateHierarchicalNetwork(
             networkConfig,
@@ -52,9 +51,9 @@ class Scenarios {
             edgeGroupConfigs
         )
         val updateParams =
-            listOf(
-                InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers),
-                InitialUpdateParams(update02, UPDATE_INIT_TIMESTAMP_02, network.updateInitializationServers)
+            listOf<InitialUpdateParams>(
+                //InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers),
+                //InitialUpdateParams(update02, UPDATE_INIT_TIMESTAMP_02, network.updateInitializationServers)
             )
         return SimulationSetup(network, updateParams)
     }
@@ -75,7 +74,6 @@ class Scenarios {
             1,
             { NodeConfig(5000000) },
             { LinkConfig(10000, 10, simpleTransmission) },
-            listOf(update01)
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),

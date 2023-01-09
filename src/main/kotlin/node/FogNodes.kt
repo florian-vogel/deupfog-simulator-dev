@@ -55,7 +55,8 @@ open class Server(
         val listenerSoftwareInformation =
             (getCurrentSubscriberRegistrySoftwareInformation() + getCurrentRecentPullNodesRegistrySoftwareInformation())
         val serverUpdates = getCurrentUpdateRegistryValues()
-        return ServerSoftwareInformation(runningSoftware, serverUpdates, listenerSoftwareInformation)
+        val runningSoftwareCopy = runningSoftware.toList()
+        return ServerSoftwareInformation(runningSoftwareCopy, serverUpdates, listenerSoftwareInformation)
     }
 
     override fun createLink(linkConfig: LinkConfig, to: Node, initialLinkState: MutableLinkState): UnidirectionalLink {

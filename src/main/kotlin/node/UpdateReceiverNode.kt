@@ -90,7 +90,8 @@ abstract class UpdateReceiverNode(
     }
 
     open fun softwareInformation(): SoftwareInformation {
-        return SoftwareInformation(runningSoftware)
+        val runningSoftwareCopy = runningSoftware.toList()
+        return SoftwareInformation(runningSoftwareCopy)
     }
 
 
@@ -144,12 +145,12 @@ abstract class UpdateReceiverNode(
         ) {
             receive(p)
         }
+        Simulator.addCallback(
+            initPackageCallback
+        )
 
         Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onProcessPackage(
             processingTime
-        )
-        Simulator.addCallback(
-            initPackageCallback
         )
     }
 }

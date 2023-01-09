@@ -82,7 +82,6 @@ data class HierarchyConfiguration(
     val branchingFactor: Int,
     val serverSimParamsAtLevel: (level: Int) -> NodeConfig,
     val serverServerLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
-    val updates: List<SoftwareUpdate>,
 )
 
 data class EdgeGroupConfiguration(
