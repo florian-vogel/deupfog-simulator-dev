@@ -4,6 +4,7 @@ import network.*
 import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
+import test.simpleTransmission
 
 class PackagesConfigServer(
     registerRequestOverhead: Int,
@@ -137,7 +138,12 @@ open class Server(
         val updates = newUpdates ?: getCurrentUpdateRegistryValues()
         //val updates = getCurrentUpdateRegistryValues().filter { newUpdates.contains(it) }
         val updatesNeededByTarget = updates.filter { update ->
-            targetSoftwareInformation.updateNeeded(update)
+            targetSoftwareInformation.updateNeeded(update) &&
+                    !packageQueueContains { p -> p.destination == target && p is UpdatePackage && p.update == update } &&
+                    !links.any { link ->
+                        val transmittingPackage = link.currentlyTransmitting()
+                        link.to == target && transmittingPackage is UpdatePackage && transmittingPackage.update == update
+                    }
         }.groupBy { it.type }.map { updatesOfType ->
             updatesOfType.value.maxByOrNull { it.updatesToVersion }
         }

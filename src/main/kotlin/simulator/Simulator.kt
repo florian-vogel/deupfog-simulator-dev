@@ -23,7 +23,7 @@ data class SimulationSetup(
 )
 
 val defaultSimulatorConfig = SimulatorConfig(
-    100000,
+    10000,
 )
 
 const val csvOutDirPath = "./metrics/csv_data"

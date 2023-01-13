@@ -81,6 +81,10 @@ open class Node(
         }
     }
 
+    protected fun packageQueueContains(condition: (p: Package) -> Boolean): Boolean{
+        return packageQueue.any(condition)
+    }
+
     private fun freeStorageCapacity(): Int {
         return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
     }

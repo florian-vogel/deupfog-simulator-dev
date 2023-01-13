@@ -1,6 +1,5 @@
 package test
 
-import network.LinkConfig
 import network.*
 import node.*
 import simulator.InitialUpdateParams
@@ -9,23 +8,25 @@ import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
 
-const val UPDATE_INIT_TIMESTAMP = 500
+const val UPDATE_INIT_TIMESTAMP = 200
 const val UPDATE_INIT_TIMESTAMP_02 = 2000
 
 val simpleTransmission = TransmissionConfig(
-    1
+   100
 ) { size, bandwidth, delay -> size / bandwidth + delay * 2 }
 
 val simplePackageConfig = PackagesConfigServer(
-    100, 100, 100
-) { _, numOfPackages -> numOfPackages }
+    10, 10, 10
+) { _, numOfPackages -> numOfPackages * 10 + 10 }
+
+val randomOfflineBehaviour = { maxRandom: Int -> { current: Int, online: Boolean -> current + (1..maxRandom).random() }}
 
 class Scenarios {
     fun testScenario(): SimulationSetup {
         val software = Software("testSoftware")
-        //val update01 = SoftwareUpdate(software, 1, 5000000) { 0 }
+        val update01 = SoftwareUpdate(software, 1, 5000000) { 0 }
         val deepestLevel = 2
-        //val update02 = SoftwareUpdate(software, 2, 5000000) { 0 }
+        val update02 = SoftwareUpdate(software, 2, 5000000) { 0 }
 
         val networkConfig = NetworkConfig(
             createPushStrategy(),
@@ -41,9 +42,9 @@ class Scenarios {
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
-            { NodeConfig(100000000) },
+            { NodeConfig(100000000, randomOfflineBehaviour(3000)) },
             { LinkConfig(10000, 10, simpleTransmission) },
-            { level -> if (level == deepestLevel) 2 else 0 }
+            { level -> if (level == deepestLevel) 20 else 0 }
         ))
         val network = generateHierarchicalNetwork(
             networkConfig,
@@ -52,8 +53,8 @@ class Scenarios {
         )
         val updateParams =
             listOf<InitialUpdateParams>(
-                //InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers),
-                //InitialUpdateParams(update02, UPDATE_INIT_TIMESTAMP_02, network.updateInitializationServers)
+                InitialUpdateParams(update01, UPDATE_INIT_TIMESTAMP, network.updateInitializationServers),
+                InitialUpdateParams(update02, UPDATE_INIT_TIMESTAMP_02, network.updateInitializationServers)
             )
         return SimulationSetup(network, updateParams)
     }
@@ -65,7 +66,7 @@ class Scenarios {
         val update02 = SoftwareUpdate(software, 2, 100000) { 0 }
 
         val networkConfig = NetworkConfig(
-            createPullStrategy(1000),
+            createPullStrategy(2000),
             listOf(software),
             simplePackageConfig
         )

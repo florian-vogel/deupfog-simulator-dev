@@ -56,6 +56,7 @@ abstract class UpdateReceiverNode(
         val onlineStatusChanged = value != getOnlineState()
         if (onlineStatusChanged) {
             super.changeOnlineState(value)
+            println("${Simulator.getCurrentTimestamp()} online state change: $this, $value")
             if (value) {
                 initStrategy()
             } else {

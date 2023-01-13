@@ -38,8 +38,7 @@ class UnidirectionalLink(
             newTransmission.start()
             currentTransmission = newTransmission
             Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkOccupied(linkConfig.bandwidth)
-        }
-        else if (!nextPackage.destination.getOnlineState()){
+        } else if (!nextPackage.destination.getOnlineState()) {
             from.checkAndRemovePackagesWithoutRoutingOptions()
         }
     }
@@ -76,5 +75,9 @@ class UnidirectionalLink(
                 startTransmission(nextPackage)
             }
         }
+    }
+
+    fun currentlyTransmitting(): Package? {
+        return currentTransmission?.p
     }
 }
