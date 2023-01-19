@@ -34,6 +34,7 @@ class ResourcesUsageMetricsCollector() : Metrics {
         println(
             "resources usage \n" +
                     "successful-data-send in total: $successfulDataSendInTotal \n" +
+                    "total-data-send: ${calculateTotalDataSend()} \n" +
                     "processing-time in total: $processingTimeInTotal \n"
         )
     }
@@ -60,5 +61,18 @@ class ResourcesUsageMetricsCollector() : Metrics {
                 TimestampToInt(Simulator.getCurrentTimestamp(), currentBandwidth)
             )
         }
+    }
+
+    private fun calculateTotalDataSend(): Int {
+        var acc = 0
+        val bandwidthTimeline = bandwidthUsageTimeline.toList()
+        for (i in 1..bandwidthUsageTimeline.size-1) {
+            val last = bandwidthTimeline[i - 1]
+            val curr = bandwidthTimeline[i]
+            val duration = curr.timestamp - last.timestamp
+            val bandwidth = last.value
+            acc += duration * bandwidth
+        }
+        return acc
     }
 }

@@ -26,3 +26,4 @@ val highResourceLinkConfig = LinkConfig(20, 50, tcpTransmissionConfig)
 
 val lowResourceNodeConfig = NodeConfig(8000000, infrequentOfflineBehaviour)
 val highResourceNodeConfig = NodeConfig(8000000)
+val serverNodeConfig = NodeConfig(500000000)
