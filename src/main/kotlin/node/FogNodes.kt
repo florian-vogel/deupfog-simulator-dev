@@ -4,7 +4,6 @@ import network.*
 import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
-import test.simpleTransmission
 
 class PackagesConfigServer(
     registerRequestOverhead: Int,
@@ -13,6 +12,7 @@ class PackagesConfigServer(
     calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 },
 ) : PackagesConfig(registerRequestOverhead, pullRequestOverhead, calculatePackageSendProcessingTime)
 
+// todo: rename to broker
 open class Server(
     nodeSimParams: NodeConfig,
     responsibleServer: List<Server>,

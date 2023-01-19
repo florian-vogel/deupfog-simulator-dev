@@ -1,6 +1,5 @@
 package test
 
-import simulator.Simulator
 import network.*
 import node.*
 import simulator.InitialUpdateParams
@@ -8,6 +7,7 @@ import simulator.SimulationSetup
 import software.SoftwareState
 import software.SoftwareUpdate
 import software.Software
+
 
 fun clientServerTestPush(): SimulationSetup{
     val software = Software("software")
@@ -21,14 +21,15 @@ fun clientServerTestPush(): SimulationSetup{
         listOf(serverNode),
         mutableListOf(SoftwareState(software, 0, 0)),
     )
-    serverNode.createLink(LinkConfig(1, 0, simpleTransmission), edgeNode, MutableLinkState(true))
-    edgeNode.createLink(LinkConfig(1, 0, simpleTransmission), serverNode, MutableLinkState(true))
+    serverNode.createLink(LinkConfig(1, 0, mqttTransmissionConfgi), edgeNode, MutableLinkState(true))
+    edgeNode.createLink(LinkConfig(1, 0, mqttTransmissionConfgi), serverNode, MutableLinkState(true))
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
     val updates = listOf(InitialUpdateParams(update, 100, listOf(serverNode)))
 
     return SimulationSetup(network, updates)
 }
+
 
 /*
 fun clientServerTestPull(): Simulator.SimulationParams {

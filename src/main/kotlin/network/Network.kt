@@ -8,10 +8,12 @@ import software.SoftwareUpdate
 val createPushStrategy = { UpdateRetrievalParams(registerAtServerForUpdates = true) }
 val createPullStrategy = { interval: Int ->
     UpdateRetrievalParams(
-        chooseNextUpdateRequestInterval = (
-                { (1..interval).random() })
+        chooseNextUpdateRequestInterval = ({ (1..interval).random() })
     )
 }
+
+val createRandomOfflineBehaviour =
+    { avgTimeBetweenOfflineStates: Int, avgOfflineStateDuration: Int -> { currentTime: Int, online: Boolean -> if (online) currentTime + (1..avgTimeBetweenOfflineStates * 2).random() else (1..avgOfflineStateDuration * 2).random() } }
 
 data class NetworkConfig(
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,
@@ -27,20 +29,20 @@ class Network(val networkConfig: NetworkConfig) {
     fun generateEdge(
         nodeSimParams: NodeConfig,
         responsibleUpdateServer: List<Server>,
-        runningSoftware: MutableList<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) }.toMutableList(),
+        runningSoftware: MutableList<SoftwareState> = networkConfig.softwareTypes.map { SoftwareState(it, 0, 0) }
+            .toMutableList(),
         updateRetrievalParams: UpdateRetrievalParams = networkConfig.defaultUpdateRetrievalParams,
         initialNodeState: MutableNodeState = MutableNodeState(true),
         packagesConfig: PackagesConfig = networkConfig.defaultPackageConfig
     ): Edge {
-        val newEdge =
-            Edge(
-                nodeSimParams,
-                responsibleUpdateServer,
-                runningSoftware,
-                updateRetrievalParams,
-                initialNodeState,
-                packagesConfig
-            )
+        val newEdge = Edge(
+            nodeSimParams,
+            responsibleUpdateServer,
+            runningSoftware,
+            updateRetrievalParams,
+            initialNodeState,
+            packagesConfig
+        )
         edges.add(newEdge)
         return newEdge
     }
@@ -53,15 +55,14 @@ class Network(val networkConfig: NetworkConfig) {
         initialNodeState: MutableNodeState = MutableNodeState(true),
         packageConfig: PackagesConfigServer = networkConfig.defaultPackageConfig
     ): Server {
-        val newServer =
-            Server(
-                nodeSimParams,
-                responsibleUpdateServer,
-                runningSoftware,
-                updateRetrievalParams,
-                initialNodeState,
-                packageConfig
-            )
+        val newServer = Server(
+            nodeSimParams,
+            responsibleUpdateServer,
+            runningSoftware,
+            updateRetrievalParams,
+            initialNodeState,
+            packageConfig
+        )
         servers.add(newServer)
         return newServer
     }
@@ -122,9 +123,7 @@ fun generateServerHierarchy(network: Network, hierarchyConfig: HierarchyConfigur
                     hierarchyConfig.serverSimParamsAtLevel(currentLevel), listOf(parent), mutableListOf()
                 )
                 parent.createLink(
-                    hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel),
-                    childServer,
-                    MutableLinkState(true)
+                    hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel), childServer, MutableLinkState(true)
                 )
                 childServer.createLink(
                     hierarchyConfig.serverServerLinkSimParamsAtLevel(currentLevel), parent, MutableLinkState(true)
@@ -148,12 +147,10 @@ fun addEdgesToHierarchy(
         val linkSimParams = edgeGroupConfig.serverEdgeLinkSimParamsAtLevel(level)
         for (server in serversAtLevel) {
             for (i in 1..edgesPerServer) {
-                val edge = network.generateEdge(
-                    edgeSimParams,
-                    listOf(server),
+                val edge = network.generateEdge(edgeSimParams, listOf(server),
                     // todo: copy interface, implemented by softwareState, with copy method
-                    edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }.toMutableList()
-                )
+                    edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
+                        .toMutableList())
                 server.createLink(linkSimParams, edge, MutableLinkState(true))
                 edge.createLink(linkSimParams, server, MutableLinkState(true))
             }

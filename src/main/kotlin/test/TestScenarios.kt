@@ -8,6 +8,7 @@ import software.Software
 import software.SoftwareState
 import software.SoftwareUpdate
 
+/*
 const val UPDATE_INIT_TIMESTAMP = 200
 const val UPDATE_INIT_TIMESTAMP_02 = 2000
 
@@ -37,13 +38,13 @@ class Scenarios {
             deepestLevel,
             2,
             { NodeConfig(100000000) },
-            { LinkConfig(10000, 10, simpleTransmission) },
+            { LinkConfig(10000, 10, mqttTransmissionConfgi) },
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPushStrategy(),
             { NodeConfig(100000000, randomOfflineBehaviour(3000)) },
-            { LinkConfig(10000, 10, simpleTransmission) },
+            { LinkConfig(10000, 10, mqttTransmissionConfgi) },
             { level -> if (level == deepestLevel) 20 else 0 }
         ))
         val network = generateHierarchicalNetwork(
@@ -74,13 +75,13 @@ class Scenarios {
             deepestLevel,
             1,
             { NodeConfig(5000000) },
-            { LinkConfig(10000, 10, simpleTransmission) },
+            { LinkConfig(10000, 10, mqttTransmissionConfgi) },
         )
         val edgeGroupConfigs = listOf(EdgeGroupConfiguration(
             listOf(SoftwareState(software, 0, 0)),
             createPullStrategy(1000),
             { NodeConfig(1000000) },
-            { LinkConfig(10000, 10, simpleTransmission) },
+            { LinkConfig(10000, 10, mqttTransmissionConfgi) },
             { level -> if (level == deepestLevel) 1 else 0 }
         ))
         val network = generateHierarchicalNetwork(
@@ -97,3 +98,4 @@ class Scenarios {
     }
 
 }
+*/

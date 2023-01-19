@@ -60,6 +60,8 @@ class ServerSoftwareInformation(
     private val listenerSoftwareInformation: List<SoftwareInformation>,
 ) :
     SoftwareInformation(runningSoftware) {
+
+    // todo: rename
     override fun updateNeeded(update: SoftwareUpdate): Boolean {
         val updateUnknown =
             knownUpdates.find { it.type == update.type && it.updatesToVersion == update.updatesToVersion } == null

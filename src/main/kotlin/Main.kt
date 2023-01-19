@@ -1,5 +1,5 @@
 import simulator.Simulator
-import test.Scenarios
+import test.PaperEvalScenarios
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -9,7 +9,7 @@ fun main(args: Array<String>) {
         File("C:\\Users\\Florian Vogel\\Documents\\Uni\\Simulator\\deupfog-simulator-dev\\analysis\\stats-out")
     oldStats.deleteRecursively()
 
-    val simulationSetup = Scenarios().testScenario()
+    val simulationSetup = PaperEvalScenarios().scenario01()
     val simulator = Simulator(simulationSetup)
     simulator.runSimulation()
 }

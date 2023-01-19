@@ -13,7 +13,8 @@ open class MutableNodeState(
 )
 
 open class NodeConfig(
-    val storageCapacity: Int, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
+    // todo: replace storageCapacity with max-queue-size at server nodes
+    val packageQueueCapacity: Int?, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
 )
 
 open class Node(
@@ -73,7 +74,8 @@ open class Node(
     }
 
     protected fun addToPackageQueue(p: Package) {
-        if (this.freeStorageCapacity() > p.getSize()) {
+        val freePackageQueueCapacity = freePackageQueueCapacity()
+        if (freePackageQueueCapacity == null || freePackageQueueCapacity > p.getSize()) {
             this.packageQueue.add(p)
             links.find { it.to == p.destination }?.startTransmission(p)
         } else {
@@ -81,12 +83,17 @@ open class Node(
         }
     }
 
-    protected fun packageQueueContains(condition: (p: Package) -> Boolean): Boolean{
+    protected fun packageQueueContains(condition: (p: Package) -> Boolean): Boolean {
         return packageQueue.any(condition)
     }
 
-    private fun freeStorageCapacity(): Int {
-        return this.simParams.storageCapacity - this.packageQueue.sumOf { it.getSize() }
+    private fun freePackageQueueCapacity(): Int? {
+        val packageQueueCapacity = simParams.packageQueueCapacity
+        return if (packageQueueCapacity != null) {
+            packageQueueCapacity - this.packageQueue.sumOf { it.getSize() }
+        } else {
+            null
+        }
     }
 
     protected fun countPackagesInQueue(): Int {
