@@ -1,5 +1,6 @@
 import simulator.Simulator
 import test.PaperEvalScenarios
+import test.clientServerTestPush
 import java.io.File
 
 fun main(args: Array<String>) {

@@ -39,6 +39,7 @@ class UnidirectionalLink(
             currentTransmission = newTransmission
             Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkOccupied(linkConfig.bandwidth)
         } else if (!nextPackage.destination.getOnlineState()) {
+            // todo: note overhead for trying to estabish connection
             from.checkAndRemovePackagesWithoutRoutingOptions()
         }
     }
@@ -50,9 +51,9 @@ class UnidirectionalLink(
             from.removePackage(finishedTransmission.p)
             to.receive(finishedTransmission.p)
             currentTransmission = null
+            Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkFreedUp(linkConfig.bandwidth)
             sendNextPackage()
         }
-        Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkFreedUp(linkConfig.bandwidth)
     }
 
     private fun cancelTransmission() {
@@ -60,6 +61,7 @@ class UnidirectionalLink(
         if (canceledTransmission != null) {
             canceledTransmission.cancel()
             currentTransmission = null
+            Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkFreedUp(linkConfig.bandwidth)
             sendNextPackage()
         }
     }

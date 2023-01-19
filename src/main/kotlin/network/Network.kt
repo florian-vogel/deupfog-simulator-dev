@@ -13,7 +13,7 @@ val createPullStrategy = { interval: Int ->
 }
 
 val createRandomOfflineBehaviour =
-    { avgTimeBetweenOfflineStates: Int, avgOfflineStateDuration: Int -> { currentTime: Int, online: Boolean -> if (online) currentTime + (1..avgTimeBetweenOfflineStates * 2).random() else (1..avgOfflineStateDuration * 2).random() } }
+    { avgTimeBetweenOfflineStates: Int, avgOfflineStateDuration: Int -> { currentTime: Int, online: Boolean -> if (online) currentTime + (1..avgTimeBetweenOfflineStates * 2).random() else currentTime + (1..avgOfflineStateDuration * 2).random() } }
 
 data class NetworkConfig(
     val defaultUpdateRetrievalParams: UpdateRetrievalParams,

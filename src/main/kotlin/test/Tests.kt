@@ -11,18 +11,18 @@ import software.Software
 
 fun clientServerTestPush(): SimulationSetup{
     val software = Software("software")
-    val networkConfig = NetworkConfig(createPushStrategy(), listOf(software), simplePackageConfig)
+    val networkConfig = NetworkConfig(createPushStrategy(), listOf(software), mqttPackageConfig)
     val network = Network(networkConfig)
     val serverNode = network.generateServer(
-        NodeConfig(10),
+        NodeConfig(10000),
     )
     val edgeNode = network.generateEdge(
-        NodeConfig(10),
+        NodeConfig(1000000),
         listOf(serverNode),
         mutableListOf(SoftwareState(software, 0, 0)),
     )
-    serverNode.createLink(LinkConfig(1, 0, mqttTransmissionConfgi), edgeNode, MutableLinkState(true))
-    edgeNode.createLink(LinkConfig(1, 0, mqttTransmissionConfgi), serverNode, MutableLinkState(true))
+    serverNode.createLink(LinkConfig(1000, 0, tcpTransmissionConfig), edgeNode, MutableLinkState(true))
+    edgeNode.createLink(LinkConfig(1000, 0, tcpTransmissionConfig), serverNode, MutableLinkState(true))
 
     val update = SoftwareUpdate(software, 1, 1) { oldSize -> oldSize + 1 }
     val updates = listOf(InitialUpdateParams(update, 100, listOf(serverNode)))

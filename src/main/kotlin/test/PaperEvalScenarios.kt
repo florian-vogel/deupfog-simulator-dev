@@ -12,11 +12,11 @@ class PaperEvalScenarios {
     fun scenario01(): SimulationSetup {
         val updateDisseminationStrategy = createPushStrategy()
 
-        val updateInitTimestamp = 5000
+        val updateInitTimestamp = 1000
         val updateSize = 100000
 
-        val brokerTopologyLevels = 2
-        val brokerTopologyBranchingFactor = 2
+        val brokerTopologyLevels = 3
+        val brokerTopologyBranchingFactor = 4
         val edgesPerBrokerOnTheLowestLevel = 16
         val interBrokerTopologyLinkConfig = highResourceLinkConfig
         val brokerNodeConfig = highResourceNodeConfig
