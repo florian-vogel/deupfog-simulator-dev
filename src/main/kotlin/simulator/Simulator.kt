@@ -1,17 +1,21 @@
 package simulator
 
-import network.UpdatePackage
 import metrics.MetricsCollector
 import network.Network
+import network.UpdatePackage
 import node.Server
 import software.SoftwareUpdate
-import java.util.PriorityQueue
+import java.io.FileOutputStream
+import java.io.PrintStream
+import java.util.*
+
 
 data class InitialUpdateParams(
     val update: SoftwareUpdate, val atInstant: Int, val initiallyAvailableAt: List<Server>
 )
 
 data class SimulatorConfig(
+    val name: String,
     val maxSimDuration: Int?,
     val printConsoleMetrics: Boolean = true,
     val writeCsvMetrics: Boolean = true,
@@ -22,15 +26,11 @@ data class SimulationSetup(
     val updatesParams: List<InitialUpdateParams>
 )
 
-val defaultSimulatorConfig = SimulatorConfig(
-    60000
-)
-
-const val csvOutDirPath = "./metrics/csv_data"
+const val csvOutDirPath = "./metrics/csv_data/"
 
 class Simulator(
-    private val setup: SimulationSetup,
-    private var config: SimulatorConfig = defaultSimulatorConfig
+    val setup: SimulationSetup,
+    private var config: SimulatorConfig
 ) {
     companion object {
         private var currentTimestamp: Int = 0
@@ -57,6 +57,13 @@ class Simulator(
 
         fun getMetrics(): MetricsCollector? {
             return metrics
+        }
+
+        fun reset(){
+            currentTimestamp = 0
+            callbacks.clear()
+            metrics = null
+
         }
     }
 
@@ -85,12 +92,17 @@ class Simulator(
             currentCallback.runCallback()
         }
 
-        if (config.printConsoleMetrics) {
-            metrics?.printSummaryToConsole()
-        }
         if (config.writeCsvMetrics) {
-            metrics?.writeMetricsToCsv(csvOutDirPath)
+            metrics?.writeMetricsToCsv(csvOutDirPath + config.name + '/')
         }
+        if (config.printConsoleMetrics) {
+            // todo: hide in deeper layer
+            //val out = PrintStream(FileOutputStream("$csvOutDirPath${config.name}/console_log.txt"))
+            //System.setOut(out)
+            metrics?.printSummaryToConsoleAndToFile(csvOutDirPath + config.name + '/' + "console_log.txt")
+        }
+
+        reset()
     }
 
     private fun processInitialUpdates(updates: List<InitialUpdateParams>) {

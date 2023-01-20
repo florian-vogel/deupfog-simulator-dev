@@ -6,6 +6,7 @@ import node.Server
 import simulator.InitialUpdateParams
 import simulator.Simulator
 import software.SoftwareUpdate
+import java.io.File
 import java.util.*
 
 class TimestampToInt(val timestamp: Int, var value: Int) : CsvWritable {
@@ -47,17 +48,30 @@ class UpdateMetricsCollector(
         writeArrivedAtEdgeTimelineToCSV(path)
     }
 
-    override fun printSummaryToConsole() {
+    override fun printSummaryToConsoleAndWriteToFile(path: String) {
+        var text = ""
         metrics.forEach {
-            println(
+            text +=
                 "update: ${it.key} \n" +
                         "initializedAt: ${it.value.initializedAt} \n" +
                         "arrivedAtAllServers: ${it.value.arrivedAtAllServersAt} \n" +
                         "arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt} \n" +
                         "arrivedAtServerTimeline: ${it.value.arrivedAtServerTimeline} \n" +
-                        "arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline} \n"
-            )
+                        "arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline} \n" +
+                        "\n"
         }
+
+        println(text)
+
+        val file = File(path)
+        if (!file.parentFile.exists()) {
+            file.parentFile.mkdirs()
+        }
+
+        //val out = file.outputStream().bufferedWriter()
+        //out.append(text)
+        //out.close()
+        file.appendText(text)
     }
 
     private fun onArriveAtEdge(update: SoftwareUpdate, edge: Edge) {

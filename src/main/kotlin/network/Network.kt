@@ -3,7 +3,6 @@ package network
 import node.*
 import software.Software
 import software.SoftwareState
-import software.SoftwareUpdate
 
 val createPushStrategy = { UpdateRetrievalParams(registerAtServerForUpdates = true) }
 val createPullStrategy = { interval: Int ->
@@ -77,6 +76,33 @@ class Network(val networkConfig: NetworkConfig) {
     }
 }
 
+data class ClientServerConfiguration(
+    val networkConfig: NetworkConfig,
+    val serverSimParams: NodeConfig,
+    val edgeCount: Int,
+    val edgeSimParams: NodeConfig,
+    val linkSimParams: () -> LinkConfig,
+    val runningSoftware: List<SoftwareState>,
+    val pullInterval: Int,
+)
+
+fun generateClientServerNetwork(config: ClientServerConfiguration): Network {
+    val network = Network(config.networkConfig)
+    val server = network.generateServer(
+        config.serverSimParams, listOf(), mutableListOf(), UpdateRetrievalParams()
+    )
+    for (i in 0..config.edgeCount) {
+        val edge = network.generateEdge(config.edgeSimParams, listOf(server),
+            // todo: this map might be not nessasary -> same at hierarchyConfig
+            config.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
+                .toMutableList())
+        server.createLink(config.linkSimParams(), edge, MutableLinkState(true))
+        edge.createLink(config.linkSimParams(), server, MutableLinkState(true))
+    }
+    network.updateInitializationServers += server
+    return network
+}
+
 
 data class HierarchyConfiguration(
     val deepestLevel: Int,
@@ -89,7 +115,7 @@ data class EdgeGroupConfiguration(
     val runningSoftware: List<SoftwareState>,
     val updateRetrievalParams: UpdateRetrievalParams,
     val edgeSimParamsAtLevel: (level: Int) -> NodeConfig,
-    val serverEdgeLinkSimParamsAtLevel: (level: Int) -> LinkConfig,
+    val serverEdgeLinkSimParamsAtLevel: (level: Int) -> () -> LinkConfig,
     val edgesPerServerAtLevel: (level: Int) -> Int,
 )
 
@@ -151,8 +177,8 @@ fun addEdgesToHierarchy(
                     // todo: copy interface, implemented by softwareState, with copy method
                     edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
                         .toMutableList())
-                server.createLink(linkSimParams, edge, MutableLinkState(true))
-                edge.createLink(linkSimParams, server, MutableLinkState(true))
+                server.createLink(linkSimParams(), edge, MutableLinkState(true))
+                edge.createLink(linkSimParams(), server, MutableLinkState(true))
             }
         }
     }

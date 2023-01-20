@@ -1,6 +1,7 @@
 package metrics
 
 import simulator.Simulator
+import java.io.File
 import java.util.*
 
 class ResourcesUsageMetricsCollector() : Metrics {
@@ -30,13 +31,27 @@ class ResourcesUsageMetricsCollector() : Metrics {
         writeBandwidthUsageTimelineToCsv(path)
     }
 
-    override fun printSummaryToConsole() {
-        println(
+    override fun printSummaryToConsoleAndWriteToFile(path: String) {
+        var text = ""
+        text +=
             "resources usage \n" +
                     "successful-data-send in total: $successfulDataSendInTotal \n" +
                     "total-data-send: ${calculateTotalDataSend()} \n" +
-                    "processing-time in total: $processingTimeInTotal \n"
-        )
+                    "processing-time in total: $processingTimeInTotal \n" +
+                    "\n"
+
+
+        println(text)
+
+        val file = File(path)
+        if (!file.parentFile.exists()) {
+            file.parentFile.mkdirs()
+        }
+
+        //val out = file.outputStream().bufferedWriter()
+        //out.append(text)
+        //out.close()
+        file.appendText(text)
     }
 
     private fun writeBandwidthUsageTimelineToCsv(resourceUsageMetricsPath: String) {
@@ -66,7 +81,7 @@ class ResourcesUsageMetricsCollector() : Metrics {
     private fun calculateTotalDataSend(): Int {
         var acc = 0
         val bandwidthTimeline = bandwidthUsageTimeline.toList()
-        for (i in 1..bandwidthUsageTimeline.size-1) {
+        for (i in 1 until bandwidthUsageTimeline.size) {
             val last = bandwidthTimeline[i - 1]
             val curr = bandwidthTimeline[i]
             val duration = curr.timestamp - last.timestamp

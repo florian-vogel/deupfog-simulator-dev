@@ -1,6 +1,7 @@
 package metrics
 
 import simulator.Simulator
+import java.io.File
 import java.util.*
 
 class PackageLossMetricsCollector() : Metrics {
@@ -20,11 +21,25 @@ class PackageLossMetricsCollector() : Metrics {
         writePackageLossTimelineToCsv(path)
     }
 
-    override fun printSummaryToConsole() {
-        println(
+    override fun printSummaryToConsoleAndWriteToFile(path: String) {
+
+        val text =
             "package loss \n" +
-                    "total package-loss-count: $totalPackageLossCount \n"
-        )
+                    "total package-loss-count: $totalPackageLossCount \n" +
+                    "\n"
+
+        println(text)
+
+        val file = File(path)
+        if (!file.parentFile.exists()) {
+            file.parentFile.mkdirs()
+        }
+
+        //val out = file.outputStream().bufferedWriter()
+        //out.append(text)
+        //out.close()
+
+        file.appendText(text)
     }
 
     private fun writePackageLossTimelineToCsv(resourceUsageMetricsPath: String) {

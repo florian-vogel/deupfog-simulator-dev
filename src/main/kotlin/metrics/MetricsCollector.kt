@@ -10,7 +10,7 @@ const val packageLossMetricsPath = "/packageLossMetrics"
 
 interface Metrics {
     fun writeToCsv(path: String)
-    fun printSummaryToConsole()
+    fun printSummaryToConsoleAndWriteToFile(path: String)
 }
 
 class MetricsCollector(
@@ -21,10 +21,10 @@ class MetricsCollector(
     val resourcesUsageMetricsCollector = ResourcesUsageMetricsCollector()
     val packageLossMetricsCollector = PackageLossMetricsCollector()
 
-    fun printSummaryToConsole() {
-        this.updateMetricsCollector.printSummaryToConsole()
-        this.resourcesUsageMetricsCollector.printSummaryToConsole()
-        this.packageLossMetricsCollector.printSummaryToConsole()
+    fun printSummaryToConsoleAndToFile(path: String) {
+        this.updateMetricsCollector.printSummaryToConsoleAndWriteToFile(path)
+        this.resourcesUsageMetricsCollector.printSummaryToConsoleAndWriteToFile(path)
+        this.packageLossMetricsCollector.printSummaryToConsoleAndWriteToFile(path)
     }
 
     fun writeMetricsToCsv(metricsPath: String) {
