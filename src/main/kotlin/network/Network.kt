@@ -91,7 +91,7 @@ fun generateClientServerNetwork(config: ClientServerConfiguration): Network {
     val server = network.generateServer(
         config.serverSimParams, listOf(), mutableListOf(), UpdateRetrievalParams()
     )
-    for (i in 0..config.edgeCount) {
+    for (i in 1..config.edgeCount) {
         val edge = network.generateEdge(config.edgeSimParams, listOf(server),
             // todo: this map might be not nessasary -> same at hierarchyConfig
             config.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }

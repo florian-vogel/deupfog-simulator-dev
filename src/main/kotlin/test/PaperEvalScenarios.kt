@@ -34,25 +34,24 @@ val edgeNodeConfig = lowResourceNodeConfig
 class PaperEvalScenarios {
     fun runAll() {
         val pushRefSimSetup = PaperEvalScenarios().scenarioPushReference()
-        val pushRefSim = Simulator(pushRefSimSetup, SimulatorConfig("pushReference", 60000))
+        val pushRefSim = Simulator(pushRefSimSetup, SimulatorConfig("0_pushReference", 60000))
         pushRefSim.runSimulation()
-
         val pullRefSimSetup = PaperEvalScenarios().scenarioPullReference()
-        val pullRefSim = Simulator(pullRefSimSetup, SimulatorConfig("pullReference", 60000))
+        val pullRefSim = Simulator(pullRefSimSetup, SimulatorConfig("0_pullReference", 60000))
         pullRefSim.runSimulation()
 
         val pushLargeSimSetup = PaperEvalScenarios().scenarioPushLarge()
-        val pushLargeSim = Simulator(pushLargeSimSetup, SimulatorConfig("pushLarge", 60000))
+        val pushLargeSim = Simulator(pushLargeSimSetup, SimulatorConfig("1_pushLarge", 60000))
         pushLargeSim.runSimulation()
         val pullLargeSimSetup = PaperEvalScenarios().scenarioPullLarge()
-        val pullLargeSim = Simulator(pullLargeSimSetup, SimulatorConfig("pullLarge", 60000))
+        val pullLargeSim = Simulator(pullLargeSimSetup, SimulatorConfig("1_pullLarge", 60000))
         pullLargeSim.runSimulation()
 
         val pushUnreliableSimSetup = PaperEvalScenarios().scenarioPushUnreliable()
-        val pushUnreliableSim = Simulator(pushUnreliableSimSetup, SimulatorConfig("pushUnreliable", 60000))
+        val pushUnreliableSim = Simulator(pushUnreliableSimSetup, SimulatorConfig("2_pushUnreliable", 60000))
         pushUnreliableSim.runSimulation()
         val pullUnreliableSimSetup = PaperEvalScenarios().scenarioPullUnreliable()
-        val pullUnreliableSim = Simulator(pullUnreliableSimSetup, SimulatorConfig("pullUnreliable", 60000))
+        val pullUnreliableSim = Simulator(pullUnreliableSimSetup, SimulatorConfig("2_pullUnreliable", 60000))
         pullUnreliableSim.runSimulation()
     }
 
@@ -118,6 +117,7 @@ class PaperEvalScenarios {
     fun scenarioPushLarge(): SimulationSetup {
         val updateDisseminationStrategy = createPushStrategy()
         val edgesPerBrokerOnTheLowestLevelOverride = 16
+        val brokerBranchingFactor = 5
 
         val networkConfig = NetworkConfig(
             updateDisseminationStrategy,
@@ -126,7 +126,7 @@ class PaperEvalScenarios {
         )
         val hierarchyConfig = HierarchyConfiguration(
             brokerTopologyLevels,
-            brokerTopologyBranchingFactor,
+            brokerBranchingFactor,
             { brokerNodeConfig },
             { interBrokerTopologyLinkConfig() },
         )
@@ -150,7 +150,7 @@ class PaperEvalScenarios {
     }
 
     fun scenarioPullLarge(): SimulationSetup {
-        val totalEdgeCountLarge = 1024
+        val totalEdgeCountLarge = 2000
         val updateDisseminationStrategy = createPullStrategy(edgePullInterval)
 
         val networkConfig = NetworkConfig(

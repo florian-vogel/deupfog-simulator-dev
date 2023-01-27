@@ -55,7 +55,8 @@ class UpdateMetricsCollector(
                 "update: ${it.key} \n" +
                         "initializedAt: ${it.value.initializedAt} \n" +
                         "arrivedAtAllServers: ${it.value.arrivedAtAllServersAt} \n" +
-                        "arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt} \n" +
+                        (if (it.value.arrivedAtAllEdgesAt != null) "arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt} \n"
+                        else "arrivedAtEdges: ${it.value.arrivedAtEdgeTimeline.groupBy { e -> e.second }.size}/${edges.size} \n") +
                         "arrivedAtServerTimeline: ${it.value.arrivedAtServerTimeline} \n" +
                         "arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline} \n" +
                         "\n"
