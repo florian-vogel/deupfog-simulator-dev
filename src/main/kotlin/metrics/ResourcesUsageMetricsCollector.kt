@@ -35,9 +35,9 @@ class ResourcesUsageMetricsCollector() : Metrics {
         var text = ""
         text +=
             "resources usage \n" +
-                    "successful-data-send in total: $successfulDataSendInTotal \n" +
-                    "total-data-send: ${calculateTotalDataSend()} \n" +
-                    "processing-time in total: $processingTimeInTotal \n" +
+                    // "successful-data-send in total: $successfulDataSendInTotal \n" +
+                    "total data-send: ${calculateTotalDataSend()} \n" +
+                    "total processing-time: $processingTimeInTotal \n" +
                     "\n"
 
 

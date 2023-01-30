@@ -51,7 +51,7 @@ def generate_update_metrics_graphs(csv_data_path, graph_output_path):
         for csv_name in update_csv_data_file_names:
             csv_path = update_csv_data_file_names_path + '/' + csv_name
             csv = pandas.read_csv(csv_path)
-            seaborn.scatterplot(data=csv, x='timestamp', y='count', s=10) #set_xlabel('Time (ms)').set_ylabel('# Nodes')
+            seaborn.scatterplot(data=csv, x='timestamp', y='count', s=10)
             plt.xlabel('Time (ms)')
             plt.ylabel('# Nodes')
             plt.savefig(update_out_path + '/' + csv_name.partition('.')[0] + '.png')
@@ -64,13 +64,31 @@ def generate_resources_usage_graphs(csv_data_path, graph_output_path):
     for csv_name in resources_usage_csv_data:
         csv_path = resources_usage_csv_data_path + '/' + csv_name
         csv = pandas.read_csv(csv_path)
-        seaborn.relplot(data=csv, x='timestamp', y='count', kind="line") #.set_xlabel('Time (ms)').set_ylabel('Used Bandwidth (bytes)')
+        seaborn.relplot(data=csv, x='timestamp', y='count', kind="line")
         plt.xlabel('Time (ms)')
-        plt.ylabel('Bandwidth in Use (Bytes)')
+        plt.ylabel('Bandwidth in Use (KB/s)')
         plt.savefig(graph_output_path + resources_usage_metrics_path + '/' + csv_name.partition('.')[
             0] + '.png')
         plt.show()
 
+def merged_graphs(csv_paths_and_label, out_path, num_nodes):
+    for [csv_path, label] in csv_paths_and_label:
+        csv = pandas.read_csv(csv_path)
+        seaborn.scatterplot(data=csv, x='timestamp', y='count', s=10, label=label)
+
+    plt.axhline(y=num_nodes*0.9, color='grey', linestyle='--', label='90% nodes')
+    plt.axhline(y=num_nodes, color='grey', label='100% nodes')
+    seaborn.despine(top=True, right=True)
+    plt.xlabel('Time (ms)')
+    plt.ylabel('# Nodes')
+    plt.legend()
+    plt.savefig(out_path)
+    plt.show()
+
+def generate_merged_graphs:
+    merged_graphs([('./arrivedAtEdgeTimeline.csv', 'push'), ('./arrivedAtEdgeTimeline_pull.csv', 'pull')], './out_graph.png', 512)
+
 
 if __name__ == "__main__":
+    # generate_merged_graphs()
     main()

@@ -116,8 +116,8 @@ class PaperEvalScenarios {
 
     fun scenarioPushLarge(): SimulationSetup {
         val updateDisseminationStrategy = createPushStrategy()
-        val edgesPerBrokerOnTheLowestLevelOverride = 16
-        val brokerBranchingFactor = 5
+        val edgesPerBrokerOnTheLowestLevelOverride = 32
+        //val brokerBranchingFactor = 5
 
         val networkConfig = NetworkConfig(
             updateDisseminationStrategy,
@@ -126,7 +126,7 @@ class PaperEvalScenarios {
         )
         val hierarchyConfig = HierarchyConfiguration(
             brokerTopologyLevels,
-            brokerBranchingFactor,
+            brokerTopologyBranchingFactor,
             { brokerNodeConfig },
             { interBrokerTopologyLinkConfig() },
         )
@@ -150,7 +150,7 @@ class PaperEvalScenarios {
     }
 
     fun scenarioPullLarge(): SimulationSetup {
-        val totalEdgeCountLarge = 2000
+        val totalEdgeCountLarge = 2048
         val updateDisseminationStrategy = createPullStrategy(edgePullInterval)
 
         val networkConfig = NetworkConfig(

@@ -53,12 +53,12 @@ class UpdateMetricsCollector(
         metrics.forEach {
             text +=
                 "update: ${it.key} \n" +
-                        "initializedAt: ${it.value.initializedAt} \n" +
-                        "arrivedAtAllServers: ${it.value.arrivedAtAllServersAt} \n" +
-                        (if (it.value.arrivedAtAllEdgesAt != null) "arrivedAtAllEdges: ${it.value.arrivedAtAllEdgesAt} \n"
+                        "initialized at: ${it.value.initializedAt} \n" +
+                        "arrived at all servers at: ${it.value.arrivedAtAllServersAt} \n" +
+                        (if (it.value.arrivedAtAllEdgesAt != null) "arrived at all edges at: ${it.value.arrivedAtAllEdgesAt} \n"
                         else "arrivedAtEdges: ${it.value.arrivedAtEdgeTimeline.groupBy { e -> e.second }.size}/${edges.size} \n") +
-                        "arrivedAtServerTimeline: ${it.value.arrivedAtServerTimeline} \n" +
-                        "arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline} \n" +
+                        // "arrivedAtServerTimeline: ${it.value.arrivedAtServerTimeline} \n" +
+                        // "arrivedAtEdgeTimeline: ${it.value.arrivedAtEdgeTimeline} \n" +
                         "\n"
         }
 
