@@ -16,6 +16,7 @@ data class UpdateRetrievalParams(
 open class PackagesConfig(
     val registerRequestOverhead: Int,
     val pullRequestOverhead: Int,
+    // todo: rename packageInitializationProcessingTime
     val calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 }
 )
 
@@ -112,7 +113,7 @@ abstract class UpdateReceiverNode(
     }
 
     private fun makePullRequestsRecursive() {
-        val chooseNextUpdateRequestInterval = updateRetrievalParams.chooseNextUpdateRequestInterval;
+        val chooseNextUpdateRequestInterval = updateRetrievalParams.chooseNextUpdateRequestInterval
         if (chooseNextUpdateRequestInterval != null) {
             sendPullRequestsToResponsibleServers()
             schedulePullRequest(chooseNextUpdateRequestInterval())

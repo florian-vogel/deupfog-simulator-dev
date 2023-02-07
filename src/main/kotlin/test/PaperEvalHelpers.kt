@@ -37,5 +37,5 @@ val lowResourceRandomLinkConfig = randomLinkConfig(3, 9, 50, 150)
 val lowResourceNodeConfig = NodeConfig(3000000, infrequentOfflineBehaviour)
 val lowResourceNodeConfigUnreliable = NodeConfig(3000000, frequentOfflineBehaviour)
 val highResourceNodeConfig = NodeConfig(3000000)
-val veryHighResourceNodeConfig = NodeConfig(30000000) // das 64 fache von highResourceNode vorher: 512000000
+val veryHighResourceNodeConfig = NodeConfig(30000000)
 

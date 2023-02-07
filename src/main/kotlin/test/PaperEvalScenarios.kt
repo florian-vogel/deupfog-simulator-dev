@@ -48,10 +48,10 @@ class PaperEvalScenarios {
         pullLargeSim.runSimulation()
 
         val pushUnreliableSimSetup = PaperEvalScenarios().scenarioPushUnreliable()
-        val pushUnreliableSim = Simulator(pushUnreliableSimSetup, SimulatorConfig("2_pushUnreliable", 60000))
+        val pushUnreliableSim = Simulator(pushUnreliableSimSetup, SimulatorConfig("2_pushUnreliable", 90000))
         pushUnreliableSim.runSimulation()
         val pullUnreliableSimSetup = PaperEvalScenarios().scenarioPullUnreliable()
-        val pullUnreliableSim = Simulator(pullUnreliableSimSetup, SimulatorConfig("2_pullUnreliable", 60000))
+        val pullUnreliableSim = Simulator(pullUnreliableSimSetup, SimulatorConfig("2_pullUnreliable", 90000))
         pullUnreliableSim.runSimulation()
     }
 

@@ -51,8 +51,9 @@ def generate_update_metrics_graphs(csv_data_path, graph_output_path):
         for csv_name in update_csv_data_file_names:
             csv_path = update_csv_data_file_names_path + '/' + csv_name
             csv = pandas.read_csv(csv_path)
+            csv['timestamp'] = csv['timestamp'].map(lambda x: x/1000)
             seaborn.scatterplot(data=csv, x='timestamp', y='count', s=10)
-            plt.xlabel('Time (ms)')
+            plt.xlabel('Time in Seconds')
             plt.ylabel('# Nodes')
             plt.savefig(update_out_path + '/' + csv_name.partition('.')[0] + '.png')
             plt.show()
@@ -64,9 +65,11 @@ def generate_resources_usage_graphs(csv_data_path, graph_output_path):
     for csv_name in resources_usage_csv_data:
         csv_path = resources_usage_csv_data_path + '/' + csv_name
         csv = pandas.read_csv(csv_path)
+        csv['timestamp'] = csv['timestamp'].map(lambda x: x/1000)
+        csv['count'] = csv['count'].map(lambda x: x/1000)
         seaborn.relplot(data=csv, x='timestamp', y='count', kind="line")
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Bandwidth in Use (KB/s)')
+        plt.xlabel('Time in Seconds')
+        plt.ylabel('Bandwidth Utilization in MB/s')
         plt.savefig(graph_output_path + resources_usage_metrics_path + '/' + csv_name.partition('.')[
             0] + '.png')
         plt.show()
@@ -74,21 +77,24 @@ def generate_resources_usage_graphs(csv_data_path, graph_output_path):
 def merged_graphs(csv_paths_and_label, out_path, num_nodes):
     for [csv_path, label] in csv_paths_and_label:
         csv = pandas.read_csv(csv_path)
+        csv['timestamp'] = csv['timestamp'].map(lambda x: x/1000)
         seaborn.scatterplot(data=csv, x='timestamp', y='count', s=10, label=label)
 
     plt.axhline(y=num_nodes*0.9, color='grey', linestyle='--', label='90% nodes')
     plt.axhline(y=num_nodes, color='grey', label='100% nodes')
     seaborn.despine(top=True, right=True)
-    plt.xlabel('Time (ms)')
+    plt.xlabel('Time in Seconds')
     plt.ylabel('# Nodes')
     plt.legend()
     plt.savefig(out_path)
     plt.show()
 
-def generate_merged_graphs:
-    merged_graphs([('./arrivedAtEdgeTimeline.csv', 'push'), ('./arrivedAtEdgeTimeline_pull.csv', 'pull')], './out_graph.png', 512)
+def generate_merged_graphs():
+    #merged_graphs([('./customData/reference/push/arrivedAtEdgeTimeline.csv', 'push'), ('./customData/reference/pull/arrivedAtEdgeTimeline.csv', 'pull')], './arrivedAtEdge_combined_ref_graph.png', 512)
+    #merged_graphs([('./customData/largeScale/push/arrivedAtEdgeTimeline.csv', 'push'), ('./customData/largeScale/pull/arrivedAtEdgeTimeline.csv', 'pull')], './arrivedAtEdge_combined_large_graph.png', 2048)
+    merged_graphs([('./customData/unreliable/push/arrivedAtEdgeTimeline.csv', 'push'), ('./customData/unreliable/pull/arrivedAtEdgeTimeline.csv', 'pull')], './arrivedAtEdge_combined_unreliable_graph.png', 512)
 
 
 if __name__ == "__main__":
-    # generate_merged_graphs()
-    main()
+    generate_merged_graphs()
+    #main()

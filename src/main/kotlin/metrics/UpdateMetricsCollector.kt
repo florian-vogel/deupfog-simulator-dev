@@ -33,7 +33,7 @@ class UpdateMetricsCollector(
         var arrivedAtAllEdgesAt: Int? = null
     }
 
-    private val metrics = initialUpdateParams.associate { it.update to MetricsPerUpdate(it.atInstant) };
+    private val metrics = initialUpdateParams.associate { it.update to MetricsPerUpdate(it.atInstant) }
 
     fun onArrive(update: SoftwareUpdate, node: Node) {
         if (node is Edge) {
@@ -117,13 +117,19 @@ class UpdateMetricsCollector(
     }
 
     private fun writeArrivedAtEdgeTimelineToCSV(updateMetricsPath: String) {
+        // it.value.arrivedAtEdgeTimeline.groupBy { e -> e.second }.size
         metrics.forEach() {
             val path = "${updateMetricsPath}/${it.key}/arrivedAtEdgeTimeline.csv"
             val arrivedAtEdgeTimeline = it.value.arrivedAtEdgeTimeline
             val timestampToArrivedCount = mutableListOf<TimestampToInt>()
+            val alreadyCounted = mutableListOf<Edge>()
             arrivedAtEdgeTimeline.groupBy { v -> v.first }.forEach { (key, value) ->
                 val latest = timestampToArrivedCount.lastOrNull()
-                timestampToArrivedCount.add(TimestampToInt(key, latest?.value?.plus(value.count()) ?: value.count()))
+                val newValue = latest?.value?.plus(value.filter { alreadyCounted.contains(it.second) == false }.count()) ?: value.count()
+                if(newValue != latest?.value){
+                    timestampToArrivedCount.add(TimestampToInt(key, newValue))
+                    alreadyCounted += value.map { it.second }
+                }
             }
             writeCsv(timestampToArrivedCount, path)
         }
