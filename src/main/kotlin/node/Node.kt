@@ -13,7 +13,6 @@ open class MutableNodeState(
 )
 
 open class NodeConfig(
-    // todo: replace storageCapacity with max-queue-size at server nodes
     val packageQueueCapacity: Int?, val nextOnlineStateChange: ((current: Int, online: Boolean) -> Int?)? = null,
 )
 
@@ -42,7 +41,7 @@ open class Node(
         links.remove(link)
     }
 
-    fun getOnlineLinks(): List<UnidirectionalLink>? {
+    fun getOnlineLinks(): List<UnidirectionalLink> {
         return this.links.filter { it.getOnlineState() }
     }
 

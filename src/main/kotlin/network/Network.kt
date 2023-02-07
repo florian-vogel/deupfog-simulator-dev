@@ -93,7 +93,6 @@ fun generateClientServerNetwork(config: ClientServerConfiguration): Network {
     )
     for (i in 1..config.edgeCount) {
         val edge = network.generateEdge(config.edgeSimParams, listOf(server),
-            // todo: this map might be not nessasary -> same at hierarchyConfig
             config.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
                 .toMutableList())
         server.createLink(config.linkSimParams(), edge, MutableLinkState(true))
@@ -159,7 +158,7 @@ fun generateServerHierarchy(network: Network, hierarchyConfig: HierarchyConfigur
         }
         serversAtLevel[currentLevel] = serversAtCurrentLevel
     }
-    return serversAtLevel;
+    return serversAtLevel
 }
 
 fun addEdgesToHierarchy(
@@ -174,7 +173,6 @@ fun addEdgesToHierarchy(
         for (server in serversAtLevel) {
             for (i in 1..edgesPerServer) {
                 val edge = network.generateEdge(edgeSimParams, listOf(server),
-                    // todo: copy interface, implemented by softwareState, with copy method
                     edgeGroupConfig.runningSoftware.toList().map { SoftwareState(it.type, it.versionNumber, it.size) }
                         .toMutableList())
                 server.createLink(linkSimParams(), edge, MutableLinkState(true))

@@ -39,7 +39,6 @@ class UnidirectionalLink(
             currentTransmission = newTransmission
             Simulator.getMetrics()?.resourcesUsageMetricsCollector?.onLinkOccupied(linkConfig.bandwidth)
         } else if (!nextPackage.destination.getOnlineState()) {
-            // todo: note overhead for trying to estabish connection
             from.checkAndRemovePackagesWithoutRoutingOptions()
         }
     }

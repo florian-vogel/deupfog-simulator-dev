@@ -48,9 +48,6 @@ class ResourcesUsageMetricsCollector() : Metrics {
             file.parentFile.mkdirs()
         }
 
-        //val out = file.outputStream().bufferedWriter()
-        //out.append(text)
-        //out.close()
         file.appendText(text)
     }
 

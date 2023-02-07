@@ -16,8 +16,7 @@ data class UpdateRetrievalParams(
 open class PackagesConfig(
     val registerRequestOverhead: Int,
     val pullRequestOverhead: Int,
-    // todo: rename packageInitializationProcessingTime
-    val calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 }
+    val calculatePackageCreationProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 }
 )
 
 abstract class UpdateReceiverNode(
@@ -137,7 +136,7 @@ abstract class UpdateReceiverNode(
     }
 
     protected fun initPackage(p: Package) {
-        val processingTime = packagesConfig.calculatePackageSendProcessingTime(
+        val processingTime = packagesConfig.calculatePackageCreationProcessingTime(
             p,
             countPackagesInQueue()
         )

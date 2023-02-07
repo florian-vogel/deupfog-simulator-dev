@@ -1,7 +1,5 @@
 package software
 
-// todo:
-// rename to artifact or similar
 class Software(val name: String) {
 
     fun updateCompatible(state: SoftwareState, update: SoftwareUpdate): Boolean {

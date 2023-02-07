@@ -5,8 +5,6 @@ import network.Network
 import network.UpdatePackage
 import node.Server
 import software.SoftwareUpdate
-import java.io.FileOutputStream
-import java.io.PrintStream
 import java.util.*
 
 
@@ -96,9 +94,6 @@ class Simulator(
             metrics?.writeMetricsToCsv(csvOutDirPath + config.name + '/')
         }
         if (config.printConsoleMetrics) {
-            // todo: hide in deeper layer
-            //val out = PrintStream(FileOutputStream("$csvOutDirPath${config.name}/console_log.txt"))
-            //System.setOut(out)
             metrics?.printSummaryToConsoleAndToFile(csvOutDirPath + config.name + '/' + "console_log.txt")
         }
 

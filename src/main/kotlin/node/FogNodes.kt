@@ -12,7 +12,6 @@ class PackagesConfigServer(
     calculatePackageSendProcessingTime: ((p: Package, numOfPackagesInQueue: Int) -> Int) = { _, _ -> 0 },
 ) : PackagesConfig(registerRequestOverhead, pullRequestOverhead, calculatePackageSendProcessingTime)
 
-// todo: rename to broker
 open class Server(
     nodeSimParams: NodeConfig,
     responsibleServer: List<Server>,
@@ -45,7 +44,7 @@ open class Server(
         super.processUpdate(update)
         val updateAlreadyInRegistry = getCurrentUpdateRegistryValues().contains(update)
         if (updateAlreadyInRegistry) {
-            return;
+            return
         } else {
             updateUpdateRegistry(update)
             initUpdatePackagesToAllSubscribers(listOf(update))
@@ -110,7 +109,7 @@ open class Server(
     }
 
     private fun updateUpdateRegistry(update: SoftwareUpdate) {
-        val registry = updateRegistry[update.type];
+        val registry = updateRegistry[update.type]
         if (registry == null) {
             updateRegistry[update.type] = mutableListOf(update)
         } else {

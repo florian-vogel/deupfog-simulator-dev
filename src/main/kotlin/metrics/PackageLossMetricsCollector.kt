@@ -14,7 +14,7 @@ class PackageLossMetricsCollector() : Metrics {
         packageLossTimeline.add(
             TimestampToInt(Simulator.getCurrentTimestamp(), 1)
         )
-        totalPackageLossCount++;
+        totalPackageLossCount++
     }
 
     override fun writeToCsv(path: String) {
@@ -22,7 +22,6 @@ class PackageLossMetricsCollector() : Metrics {
     }
 
     override fun printSummaryToConsoleAndWriteToFile(path: String) {
-
         val text =
             "package loss \n" +
                     "total package-loss-count: $totalPackageLossCount \n" +
@@ -34,11 +33,6 @@ class PackageLossMetricsCollector() : Metrics {
         if (!file.parentFile.exists()) {
             file.parentFile.mkdirs()
         }
-
-        //val out = file.outputStream().bufferedWriter()
-        //out.append(text)
-        //out.close()
-
         file.appendText(text)
     }
 
